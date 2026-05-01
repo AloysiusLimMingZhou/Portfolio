@@ -90,7 +90,7 @@ function CareerPath({ onSelect }) {
   return (
     <div style={{ position: "relative", maxWidth: 980, margin: "0 auto", padding: "20px 0" }}>
       {/* spine */}
-      <div style={{
+      <div className="career-spine" style={{
         position: "absolute", left: "50%", top: 0, bottom: 0, width: 2,
         transform: "translateX(-50%)",
         background: "linear-gradient(180deg, transparent, rgba(0,245,255,0.6), rgba(157,0,255,0.6), rgba(255,43,214,0.6), transparent)",

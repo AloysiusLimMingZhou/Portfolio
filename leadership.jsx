@@ -87,7 +87,7 @@ function RoleCard({ role, idx }) {
 function LeadershipGraph({ onSelect }) {
   const data = window.LEADERSHIP_DATA;
   const wrapRef = useRefL(null);
-  const [size, setSize] = useStateL({ w: 1200, h: 720 });
+  const [size, setSize] = useStateL({ w: 1200, h: 900 });
   const [hover, setHover] = useStateL(null); // { kind: 'year'|'event', id }
   const [tick, setTick] = useStateL(0);
 
@@ -143,13 +143,13 @@ function LeadershipGraph({ onSelect }) {
     years.forEach((y) => {
       const hub = hubIdx[y];
       const items = yearBuckets[y];
-      const radius = 150 + (items.length > 2 ? 30 : 0);
+      const radius = 220 + (items.length > 2 ? 30 : 0);
       items.forEach((ev, i) => {
         const total = items.length;
         // semi-circle distribution: alternating top/bottom around hub
         const sign = i % 2 === 0 ? -1 : 1;
         const tier = Math.floor(i / 2);
-        const angle = sign * (Math.PI / 2) + sign * (tier * 0.45) - (sign * (total > 1 ? 0.25 : 0));
+        const angle = sign * (Math.PI / 2) + sign * (tier * 0.55) - (sign * (total > 1 ? 0.25 : 0));
         // jitter angle deterministically
         const a = angle;
         out.push({
@@ -165,7 +165,7 @@ function LeadershipGraph({ onSelect }) {
   }, [years, yearBuckets, hubs, size]);
 
   return (
-    <div className="graph-wrap" ref={wrapRef} style={{ height: 720 }}>
+    <div className="graph-wrap" ref={wrapRef} style={{ height: 900 }}>
       <svg viewBox={`0 0 ${size.w} ${size.h}`} preserveAspectRatio="none">
         <defs>
           <filter id="lglow" x="-50%" y="-50%" width="200%" height="200%">
@@ -265,7 +265,7 @@ function LeadershipGraph({ onSelect }) {
               }}>
                 {n.id.slice(1)}
               </div>
-              <div style={{ position: "absolute", top: 64, left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", pointerEvents: "none", textAlign: "center" }}>
+              <div style={{ position: "absolute", top: 72, left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", pointerEvents: "none", textAlign: "center" }}>
                 <div className="mono" style={{ fontSize: 11, color: isHover ? color : "var(--ink)", textShadow: isHover ? `0 0 10px ${color}` : "none", fontWeight: 600 }}>
                   {n.name}
                 </div>

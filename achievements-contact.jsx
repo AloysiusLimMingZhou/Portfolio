@@ -12,12 +12,14 @@ function AchievementsGraph({ data, onSelect }) {
   const wrapRef = useRefA(null);
   const [size, setSize] = useStateA({ w: 1200, h: 880 });
   const [hover, setHover] = useStateA(null);
+  const [isMobile, setIsMobile] = useStateA(window.innerWidth <= 720);
 
   useEffectA(() => {
     function measure() {
       if (!wrapRef.current) return;
       const r = wrapRef.current.getBoundingClientRect();
       setSize({ w: r.width, h: r.height });
+      setIsMobile(window.innerWidth <= 720);
     }
     measure();
     window.addEventListener("resize", measure);
@@ -51,6 +53,56 @@ function AchievementsGraph({ data, onSelect }) {
     return out;
   }, [size, data.achievements]);
 
+  /* ── Mobile: stacked card layout ── */
+  if (isMobile) {
+    return (
+      <div ref={wrapRef} style={{ padding: "20px 0" }}>
+        {clusters.map((c) => {
+          const items = data.achievements.filter((a) => a.cluster === c);
+          if (!items.length) return null;
+          const color = CLUSTER_COLORS[c];
+          return (
+            <div key={c} style={{ marginBottom: 28 }}>
+              <div className="mono" style={{
+                fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase",
+                color: color, marginBottom: 12, textShadow: `0 0 12px ${color}`,
+              }}>
+                ◆ {c}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {items.map((a) => {
+                  const isHover = hover === a.id;
+                  return (
+                    <div key={a.id} data-cursor="hover"
+                      onMouseEnter={() => setHover(a.id)} onMouseLeave={() => setHover(null)}
+                      onClick={() => onSelect && onSelect(a)}>
+                      <div className="glass mono" style={{
+                        padding: "12px 16px",
+                        borderRadius: 8,
+                        border: `1px solid ${isHover ? color : "rgba(255,255,255,0.12)"}`,
+                        background: isHover ? `${color}14` : "rgba(10, 10, 18, 0.85)",
+                        boxShadow: isHover ? `0 0 24px ${color}80` : `0 0 8px ${color}20`,
+                        transition: "all 220ms cubic-bezier(.2,.7,.2,1)",
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 9, letterSpacing: "0.16em" }}>
+                          <span style={{ color: color }}>◆ {a.type.toUpperCase()}</span>
+                          <span style={{ color: "var(--ink-faint)" }}>{a.year}</span>
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 600, marginBottom: 2, wordBreak: "break-word" }}>{a.name}</div>
+                        <div style={{ fontSize: 10, color: "var(--ink-dim)", wordBreak: "break-word" }}>{a.note}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  /* ── Desktop: SVG graph layout ── */
   return (
     <div className="graph-wrap" ref={wrapRef} style={{ height: 980, paddingTop: 96 }}>
       <svg viewBox={`0 0 ${size.w} ${size.h}`} preserveAspectRatio="none">
@@ -131,6 +183,7 @@ function AchievementsGraph({ data, onSelect }) {
               background: isHover ? `${color}14` : "rgba(10, 10, 18, 0.85)",
               boxShadow: isHover ? `0 0 24px ${color}80` : `0 0 8px ${color}20`,
               minWidth: 150,
+              maxWidth: 220,
               transform: isHover ? "scale(1.05)" : "scale(1)",
               transition: "all 220ms cubic-bezier(.2,.7,.2,1)",
             }}>
@@ -138,8 +191,8 @@ function AchievementsGraph({ data, onSelect }) {
                 <span style={{ color: color }}>◆ {a.type.toUpperCase()}</span>
                 <span style={{ color: "var(--ink-faint)" }}>{a.year}</span>
               </div>
-              <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 600, marginBottom: 2 }}>{a.name}</div>
-              <div style={{ fontSize: 10, color: "var(--ink-dim)" }}>{a.note}</div>
+              <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 600, marginBottom: 2, wordBreak: "break-word" }}>{a.name}</div>
+              <div style={{ fontSize: 10, color: "var(--ink-dim)", wordBreak: "break-word" }}>{a.note}</div>
             </div>
           </div>
         );

@@ -1,0 +1,133 @@
+name: CI — Portfolio Quality Gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least-privilege: no permissions unless explicitly granted
+permissions:
+  contents: read
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Job 1: Static file & structure validation
+  # ─────────────────────────────────────────────
+  validate:
+    name: Validate Static Files
+    runs-on: ubuntu-latest
+
+    steps:
+      # Pinned to actions/checkout v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Verify all JSX files referenced in index.html actually exist
+      - name: Check referenced JSX files exist
+        run: |
+          echo "Checking JSX file references in index.html..."
+          missing=0
+          for file in data.jsx leadership-data.jsx chrome.jsx hero-projects.jsx \
+                      achievements-contact.jsx leadership.jsx career.jsx \
+                      detail-modal.jsx app.jsx; do
+            if [ ! -f "$file" ]; then
+              echo "❌ Missing: $file"
+              missing=1
+            else
+              echo "✅ Found: $file"
+            fi
+          done
+          if [ $missing -eq 1 ]; then
+            echo "One or more required files are missing."
+            exit 1
+          fi
+
+      # Verify index.html is well-formed HTML
+      # Pinned to vnu release 24.7.16 (specific tagged release)
+      - name: Install HTML validator (vnu-jar)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q default-jre
+          VNU_VERSION="24.7.16"
+          curl -sSL "https://github.com/validator/validator/releases/download/${VNU_VERSION}/vnu.jar_${VNU_VERSION}.zip" \
+            -o /tmp/vnu.zip
+          unzip -o /tmp/vnu.zip -d /tmp/vnu
+          mv /tmp/vnu/dist/vnu.jar /tmp/vnu.jar
+
+      - name: Validate index.html structure
+        run: |
+          java -jar /tmp/vnu.jar --errors-only index.html && echo "✅ index.html is valid"
+
+      # Verify vercel.json is valid JSON
+      - name: Validate vercel.json
+        run: |
+          python3 -c "import json, sys; json.load(open('vercel.json'))" && \
+          echo "✅ vercel.json is valid JSON"
+
+  # ─────────────────────────────────────────────
+  # Job 2: Broken link checker
+  # ─────────────────────────────────────────────
+  link-check:
+    name: Check for Broken Links
+    runs-on: ubuntu-latest
+    # Only run on PRs to avoid spamming on every push
+    if: github.event_name == 'pull_request'
+
+    steps:
+      # Pinned to actions/checkout v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Pinned to lycheeverse/lychee-action v2.8.0
+      - name: Check links in HTML and JSX files
+        uses: lycheeverse/lychee-action@v2.8.0
+        with:
+          # Scan HTML files; skip localhost and CDN unpkg (they can be flaky in CI)
+          args: >-
+            --verbose
+            --no-progress
+            --exclude "localhost"
+            --exclude "127.0.0.1"
+            --exclude "unpkg.com"
+            --exclude "fonts.googleapis.com"
+            --exclude "fonts.gstatic.com"
+            *.html
+          fail: true
+
+  # ─────────────────────────────────────────────
+  # Job 3: Security header audit (vercel.json)
+  # ─────────────────────────────────────────────
+  security-audit:
+    name: Audit Security Headers
+    runs-on: ubuntu-latest
+
+    steps:
+      # Pinned to actions/checkout v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify required security headers are present
+        run: |
+          echo "Auditing security headers in vercel.json..."
+          required_headers=(
+            "X-Content-Type-Options"
+            "X-Frame-Options"
+            "Referrer-Policy"
+            "Permissions-Policy"
+          )
+          content=$(cat vercel.json)
+          missing=0
+          for header in "${required_headers[@]}"; do
+            if echo "$content" | grep -q "$header"; then
+              echo "✅ $header"
+            else
+              echo "❌ Missing header: $header"
+              missing=1
+            fi
+          done
+          if [ $missing -eq 1 ]; then
+            echo "One or more security headers are missing from vercel.json."
+            exit 1
+          fi
+          echo "All security headers present."
