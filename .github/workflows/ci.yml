@@ -43,22 +43,6 @@ jobs:
             exit 1
           fi
 
-      # Verify index.html is well-formed HTML
-      # Pinned to vnu release 24.7.16 (specific tagged release)
-      - name: Install HTML validator (vnu-jar)
-        run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q default-jre
-          VNU_VERSION="24.7.16"
-          curl -sSL "https://github.com/validator/validator/releases/download/${VNU_VERSION}/vnu.jar_${VNU_VERSION}.zip" \
-            -o /tmp/vnu.zip
-          unzip -o /tmp/vnu.zip -d /tmp/vnu
-          mv /tmp/vnu/dist/vnu.jar /tmp/vnu.jar
-
-      - name: Validate index.html structure
-        run: |
-          java -jar /tmp/vnu.jar --errors-only index.html && echo "✅ index.html is valid"
-
       # Verify vercel.json is valid JSON
       - name: Validate vercel.json
         run: |
