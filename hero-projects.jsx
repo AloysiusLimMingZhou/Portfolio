@@ -200,12 +200,14 @@ function ProjectGraph({ data, onSelect }) {
   const [size, setSize] = useStateH({ w: 1200, h: 720 });
   const [hover, setHover] = useStateH(null); // { kind, id }
   const [tick, setTick] = useStateH(0);
+  const [isMobile, setIsMobile] = useStateH(window.innerWidth <= 720);
 
   useEffectH(() => {
     function measure() {
       if (!wrapRef.current) return;
       const r = wrapRef.current.getBoundingClientRect();
       setSize({ w: r.width, h: r.height });
+      setIsMobile(window.innerWidth <= 720);
     }
     measure();
     window.addEventListener("resize", measure);
@@ -333,6 +335,58 @@ function ProjectGraph({ data, onSelect }) {
     return { hubs, projs };
   }, [hover, projects]);
 
+  /* ── Mobile: stacked card layout grouped by field ── */
+  if (isMobile) {
+    const fieldsList = window.PROJECT_FIELDS;
+    return (
+      <div ref={wrapRef} style={{ padding: "20px 0" }}>
+        {fieldsList.map((f) => {
+          const items = data.projects.filter((p) => (p.fields || []).includes(f.id));
+          if (!items.length) return null;
+          const color = f.color;
+          return (
+            <div key={f.id} style={{ marginBottom: 28 }}>
+              <div className="mono" style={{
+                fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase",
+                color: color, marginBottom: 12, textShadow: `0 0 12px ${color}`,
+              }}>
+                ◆ {f.label}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {items.map((p) => {
+                  const isHover = hover && hover.id === p.id;
+                  return (
+                    <div key={p.id} data-cursor="hover"
+                      onMouseEnter={() => setHover({ kind: "proj", id: p.id })}
+                      onMouseLeave={() => setHover(null)}
+                      onClick={() => onSelect(p)}>
+                      <div className="glass mono" style={{
+                        padding: "12px 16px",
+                        borderRadius: 8,
+                        border: `1px solid ${isHover ? color : "rgba(255,255,255,0.12)"}`,
+                        background: isHover ? `${color}14` : "rgba(10, 10, 18, 0.85)",
+                        boxShadow: isHover ? `0 0 24px ${color}80` : `0 0 8px ${color}20`,
+                        transition: "all 220ms cubic-bezier(.2,.7,.2,1)",
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 9, letterSpacing: "0.16em" }}>
+                          <span style={{ color: color }}>◆ {p.domain.toUpperCase()} · {p.tag.toUpperCase()}</span>
+                          <span style={{ color: "var(--ink-faint)" }}>{p.year}</span>
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 600, marginBottom: 2, wordBreak: "break-word" }}>{p.name}</div>
+                        <div style={{ fontSize: 10, color: "var(--ink-dim)", wordBreak: "break-word" }}>{p.tagline}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  /* ── Desktop: SVG graph layout ── */
   return (
     <div className="graph-wrap" ref={wrapRef} style={{ height: 820 }}>
       <svg viewBox={`0 0 ${size.w} ${size.h}`} preserveAspectRatio="none">
