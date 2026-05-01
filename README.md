@@ -20,6 +20,36 @@ Then open http://localhost:5500/. Opening `index.html` directly via `file://` wi
 
 ---
 
+## Portrait image
+
+The hero section includes an animated placeholder frame for your profile photo. To display an actual portrait:
+
+1. **Add a `portrait.png`** to the project root (same folder as `index.html`):
+   - Recommended size: **1024 × 1280 px** (4:5 aspect ratio)
+   - Transparent background (PNG) works best with the dark theme
+   - If you don't have a transparent-background photo, a solid dark background (`#0d0d18`) blends well
+
+2. **Update `hero-projects.jsx`** — find the `ProfilePlaceholder` component (around line 101) and replace the inner `<div>` contents (the SVG silhouette + helper text) with an `<img>` tag:
+
+   ```jsx
+   <img
+     src="portrait.png"
+     alt="Portrait"
+     style={{
+       width: "100%",
+       height: "100%",
+       objectFit: "cover",
+       borderRadius: 10,
+     }}
+   />
+   ```
+
+3. **Refresh the browser** — your portrait should appear inside the animated glass frame.
+
+> **Note:** If `portrait.png` doesn't exist in the root, the placeholder silhouette with "▸ DROP PORTRAIT.PNG" instruction text will display instead. This is purely cosmetic — the site functions correctly either way.
+
+---
+
 ## File map
 
 | File | What it owns |

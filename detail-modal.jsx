@@ -239,7 +239,7 @@ function projectToItem(p) {
     left: { heading: "▸ ABSTRACT", body: p.description, features: p.features, featuresLabel: "▸ KEY FEATURES" },
     right: [
       { heading: "▸ TECH STACK", kind: "chips", items: p.stack },
-      { heading: "▸ ENDPOINTS", kind: "links", items: [[`github.com/al/${p.id}`, "#"], [`${p.id}.aloysiuslim.dev`, "#"]] },
+      { heading: "▸ ENDPOINTS", kind: "links", items: [[`github.com/user/${p.id}`, "#"], [`${p.id}.yourdomain.dev`, "#"]] },
     ],
   };
 }
@@ -253,11 +253,11 @@ function achievementToItem(a) {
     tagline: a.note,
     left: {
       heading: "▸ CONTEXT",
-      body: a.description || `Recognized milestone in the ${a.cluster.replace("-", " ")} basin. ${a.note}.`,
+      body: a.description || `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ${a.note}.`,
       features: a.highlights || [
         `Year ${a.year} · Category ${a.type}`,
-        "Verified by external organizing body",
-        "Listed on neural-profile public ledger",
+        "Ut enim ad minim veniam quis nostrud exercitation",
+        "Duis aute irure dolor in reprehenderit in voluptate",
       ],
       featuresLabel: "▸ HIGHLIGHTS",
     },

@@ -139,7 +139,8 @@ function ProfilePlaceholder() {
             { top: 10, left: 10 }, { top: 10, right: 10 },
             { bottom: 10, left: 10 }, { bottom: 10, right: 10 },
           ].map((pos, i) => (
-            <div key={i} style={{ position: "absolute", width: 14, height: 14, borderColor: "var(--cyan)", borderStyle: "solid", borderWidth: 0,
+            <div key={i} style={{
+              position: "absolute", width: 14, height: 14, borderColor: "var(--cyan)", borderStyle: "solid", borderWidth: 0,
               borderTopWidth: pos.top !== undefined ? 1 : 0,
               borderBottomWidth: pos.bottom !== undefined ? 1 : 0,
               borderLeftWidth: pos.left !== undefined ? 1 : 0,
@@ -265,8 +266,8 @@ function ProjectGraph({ data, onSelect }) {
 
     // min-distance relaxation: nodes vs nodes, and nodes vs hubs
     const NODE_R = 92;          // min center-to-center between projects (node + label below)
-    const HUB_R  = 132;         // min center-to-center to a hub (hubs are big)
-    const PAD_X  = 48, PAD_Y = 40;
+    const HUB_R = 132;         // min center-to-center to a hub (hubs are big)
+    const PAD_X = 48, PAD_Y = 40;
 
     for (let pass = 0; pass < 60; pass++) {
       let moved = 0;
