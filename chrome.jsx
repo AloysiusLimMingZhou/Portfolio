@@ -202,14 +202,14 @@ function BootScreen({ onDone }) {
 /* ===== Floating glass nav — responsive with hamburger drawer ===== */
 function Nav({ activeSection }) {
   const items = [
-    { id: "hero", label: "00 / root" },
-    { id: "projects", label: "01 / projects" },
-    { id: "achievements", label: "02 / achievements" },
-    { id: "leadership", label: "03 / leadership" },
-    { id: "career", label: "04 / career" },
-    { id: "skills", label: "05 / stack" },
-    { id: "testimonials", label: "06 / testimonials" },
-    { id: "contact", label: "07 / connect" },
+    { id: "hero", num: "00", text: "root" },
+    { id: "projects", num: "01", text: "projects" },
+    { id: "achievements", num: "02", text: "achievements" },
+    { id: "leadership", num: "03", text: "leadership" },
+    { id: "career", num: "04", text: "career" },
+    { id: "skills", num: "05", text: "stack" },
+    { id: "testimonials", num: "06", text: "testimonials" },
+    { id: "contact", num: "07", text: "connect" },
   ];
   const [open, setOpen] = useState(false);
 
@@ -234,7 +234,8 @@ function Nav({ activeSection }) {
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  const activeLabel = (items.find((i) => i.id === activeSection) || items[0]).label;
+  const activeItem = items.find((i) => i.id === activeSection) || items[0];
+  const activeLabel = `${activeItem.num} / ${activeItem.text}`;
 
   return (
     <>
@@ -247,7 +248,8 @@ function Nav({ activeSection }) {
             className={`np-link${activeSection === it.id ? " is-active" : ""}`}
           >
             <span className="np-dot" />
-            {it.label}
+            <span className="np-link-num">{it.num}</span>
+            <span>{it.text}</span>
           </a>
         ))}
       </nav>
@@ -292,7 +294,7 @@ function Nav({ activeSection }) {
               onClick={() => setOpen(false)}
             >
               <span className="np-dot" />
-              <span>{it.label}</span>
+              <span>{it.num} / {it.text}</span>
               <span className="np-arrow">↗</span>
             </a>
           ))}

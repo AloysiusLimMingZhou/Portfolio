@@ -316,12 +316,14 @@ label.field-label {
   max-width: calc(100vw - 32px);
 }
 .np-link {
-  padding: 8px 12px;
+  padding: 8px 10px;
   font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--ink-dim);
   border-radius: 999px;
-  display: inline-flex; align-items: center; gap: 7px;
+  display: inline-flex; align-items: center; gap: 6px;
   flex-shrink: 0;
+  min-width: 0;
+  justify-content: center;
   transition: color 180ms ease, background 180ms ease, text-shadow 180ms ease;
 }
 .np-link:hover { color: var(--ink); }
@@ -330,6 +332,15 @@ label.field-label {
   background: rgba(0, 245, 255, 0.06);
   text-shadow: 0 0 10px rgba(0, 245, 255, 0.6);
 }
+.np-link-num {
+  color: var(--ink-faint);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+  min-width: 18px;
+  text-align: right;
+}
+.np-link.is-active .np-link-num { color: var(--cyan); opacity: 0.7; }
 .np-dot {
   width: 5px; height: 5px; border-radius: 50%;
   background: var(--ink-faint);
