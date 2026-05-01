@@ -266,12 +266,14 @@ function TechSkillsGraph() {
   const [size, setSize] = useStateC({ w: 1200, h: 720 });
   const [hover, setHover] = useStateC(null);
   const [tick, setTick] = useStateC(0);
+  const [isMobile, setIsMobile] = useStateC(window.innerWidth <= 720);
 
   useEffectC(() => {
     function measure() {
       if (!wrapRef.current) return;
       const r = wrapRef.current.getBoundingClientRect();
       setSize({ w: r.width, h: r.height });
+      setIsMobile(window.innerWidth <= 720);
     }
     measure();
     window.addEventListener("resize", measure);
@@ -379,6 +381,55 @@ function TechSkillsGraph() {
     return { hubsH, nodesH };
   }, [hover, nodes]);
 
+  /* ── Mobile: stacked card layout grouped by skill field ── */
+  if (isMobile) {
+    const allFields = window.SKILL_FIELDS;
+    const allNodes = window.SKILL_NODES;
+    return (
+      <div ref={wrapRef} style={{ padding: "20px 0" }}>
+        {allFields.map((f) => {
+          const items = allNodes.filter((n) => (n.fields || []).includes(f.id));
+          if (!items.length) return null;
+          const color = f.color;
+          return (
+            <div key={f.id} style={{ marginBottom: 28 }}>
+              <div className="mono" style={{
+                fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase",
+                color: color, marginBottom: 12, textShadow: `0 0 12px ${color}`,
+              }}>
+                ◆ {f.label}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {items.map((n) => {
+                  const isHover = hover && hover.id === n.id;
+                  return (
+                    <div key={n.id} data-cursor="hover"
+                      onMouseEnter={() => setHover({ kind: "node", id: n.id })}
+                      onMouseLeave={() => setHover(null)}>
+                      <div className="glass mono" style={{
+                        padding: "8px 14px",
+                        borderRadius: 999,
+                        border: `1px solid ${isHover ? color : "rgba(255,255,255,0.12)"}`,
+                        background: isHover ? `${color}18` : "rgba(10, 10, 18, 0.85)",
+                        boxShadow: isHover ? `0 0 18px ${color}70` : `0 0 6px ${color}20`,
+                        transition: "all 220ms cubic-bezier(.2,.7,.2,1)",
+                        display: "inline-flex", alignItems: "center", gap: 7,
+                      }}>
+                        <span style={{ fontSize: 13 }}>{n.icon}</span>
+                        <span style={{ fontSize: 11, color: isHover ? color : "var(--ink)", fontWeight: 600, letterSpacing: "0.06em" }}>{n.name}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  /* ── Desktop: SVG graph layout ── */
   return (
     <div className="graph-wrap" ref={wrapRef} style={{ height: 720 }}>
       <svg viewBox={`0 0 ${size.w} ${size.h}`} preserveAspectRatio="none">
