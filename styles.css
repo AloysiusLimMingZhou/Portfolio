@@ -192,7 +192,7 @@ section.deck {
 }
 .modal-backdrop.open { opacity: 1; pointer-events: auto; }
 .modal-card {
-  width: 100%; max-width: 980px; max-height: 86vh; overflow: hidden;
+  width: 100%; max-width: 980px; max-height: 90vh; overflow: auto;
   transform: translateY(20px) scale(0.98);
   transition: transform 320ms cubic-bezier(.2,.7,.2,1);
 }
@@ -550,6 +550,8 @@ label.field-label {
   .hero-stats { grid-template-columns: 1fr 1fr !important; }
   .hero-stats > :last-child { grid-column: 1 / -1; }
   .testimonial-card { width: 280px !important; padding: 18px !important; }
-  /* Modal pane padding */
-  .bento-grid { padding: 18px !important; gap: 12px !important; }
+  /* Modal — reduce padding and relax height constraints to prevent bottom cutoff */
+  .modal-backdrop { padding: 16px !important; }
+  .modal-card { max-height: 92vh !important; }
+  .bento-grid { padding: 14px !important; gap: 10px !important; max-height: none !important; }
 }

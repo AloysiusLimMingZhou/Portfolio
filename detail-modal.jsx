@@ -120,7 +120,7 @@ function DetailModal({ item, onClose }) {
             display: "grid",
             gridTemplateColumns: "1.3fr 1fr",
             gap: 16,
-            maxHeight: "62vh",
+            maxHeight: "calc(90vh - 160px)",
             overflowY: "auto",
             transform: "translateZ(20px)",
           }}>
