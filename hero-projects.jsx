@@ -149,20 +149,16 @@ function ProfilePlaceholder() {
             }} />
           ))}
           {/* avatar silhouette */}
-          <svg width="120" height="120" viewBox="0 0 120 120" style={{ opacity: 0.7 }}>
-            <defs>
-              <linearGradient id="avatarG" x1="0" x2="1" y1="0" y2="1">
-                <stop offset="0%" stopColor="#00f5ff" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="#9d00ff" stopOpacity="0.5" />
-              </linearGradient>
-            </defs>
-            <circle cx="60" cy="44" r="22" fill="none" stroke="url(#avatarG)" strokeWidth="1.5" strokeDasharray="3 3" />
-            <path d="M 20 110 Q 60 70 100 110" fill="none" stroke="url(#avatarG)" strokeWidth="1.5" strokeDasharray="3 3" />
-          </svg>
-          <div className="mono" style={{ fontSize: 10, letterSpacing: "0.22em", color: "var(--ink-faint)", textAlign: "center", padding: "0 16px" }}>
-            ▸ DROP PORTRAIT.PNG<br />
-            <span style={{ color: "var(--cyan)", fontSize: 9 }}>1024 × 1280 · TRANSPARENT BG</span>
-          </div>
+          <img
+            src="portrait.png"
+            alt="Portrait"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              borderRadius: 10,
+            }}
+          />
           {/* scanline */}
           <div style={{
             position: "absolute", left: 0, right: 0, height: 2,
