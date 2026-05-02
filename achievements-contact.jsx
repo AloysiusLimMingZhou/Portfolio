@@ -202,28 +202,166 @@ function AchievementsGraph({ data, onSelect }) {
 }
 
 /* ===== Contact Node ===== */
-function ContactNode() {
-  const [stage, setStage] = useStateA("idle"); // idle | open | sending | sent
-  const [form, setForm] = useStateA({ email: "", subject: "", message: "" });
 
-  function open() { setStage("open"); }
-  function send(e) {
-    e.preventDefault();
-    setStage("sending");
-    setTimeout(() => setStage("sent"), 1400);
+// ─── EmailJS config — fill in your values ───────────────────────────────────
+const EMAILJS_SERVICE_ID = "service_hyasekt";   // e.g. "service_xxxxxxx"
+const EMAILJS_TEMPLATE_ID = "template_t3sfurj";  // e.g. "template_xxxxxxx"
+const EMAILJS_PUBLIC_KEY = "bP9JSr0ZRnSU-9K2w";   // e.g. "xxxxxxxxxxxxxxxxxxxx"
+const RECAPTCHA_SITE_KEY = "6LeKRdUsAAAAAMHSzc8RTJUW4bJN-xmRyaAj6-8e"; // from console.cloud.google.com
+// ────────────────────────────────────────────────────────────────────────────
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const MAX_MSG = 1000;
+const COOLDOWN = 60; // seconds
+
+function sanitize(str) {
+  // Strip script-like patterns; do NOT use innerHTML — plain string ops only
+  return str
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/javascript\s*:/gi, "")
+    .replace(/on\w+\s*=/gi, "")
+    .trim();
+}
+
+function ContactNode() {
+  const [stage, setStage] = useStateA("idle"); // idle | open | sending | sent | error | cooldown
+  const [form, setForm] = useStateA({ email: "", subject: "", message: "" });
+  const [honeypot, setHoneypot] = useStateA("");   // must stay empty
+  const [fieldErr, setFieldErr] = useStateA({});   // per-field validation errors
+  const [errMsg, setErrMsg] = useStateA("");      // global error message (stage === "error")
+  const [coolLeft, setCoolLeft] = useStateA(0);    // seconds remaining in cooldown
+  const lastSentRef = useRefA(0);                  // timestamp of last successful send
+  const captchaRef = useRefA(null);               // div for reCAPTCHA widget
+  const widgetIdRef = useRefA(null);               // grecaptcha widget id
+
+  // Render reCAPTCHA widget once the form opens
+  useEffectA(() => {
+    if (stage !== "open") return;
+    if (!window.grecaptcha || widgetIdRef.current !== null) return;
+    const interval = setInterval(() => {
+      if (!window.grecaptcha || !captchaRef.current) return;
+      clearInterval(interval);
+      try {
+        widgetIdRef.current = window.grecaptcha.render(captchaRef.current, {
+          sitekey: RECAPTCHA_SITE_KEY,
+          theme: "dark",
+          size: "normal",
+        });
+      } catch (_) { /* already rendered */ }
+    }, 200);
+    return () => clearInterval(interval);
+  }, [stage]);
+
+  // Cooldown countdown ticker
+  useEffectA(() => {
+    if (stage !== "cooldown") return;
+    const id = setInterval(() => {
+      const left = Math.ceil((lastSentRef.current + COOLDOWN * 1000 - Date.now()) / 1000);
+      if (left <= 0) {
+        setCoolLeft(0);
+        setStage("open");
+        clearInterval(id);
+      } else {
+        setCoolLeft(left);
+      }
+    }, 500);
+    return () => clearInterval(id);
+  }, [stage]);
+
+  function open() {
+    widgetIdRef.current = null; // allow re-render on reopen
+    setStage("open");
   }
+
+  function validate() {
+    const errs = {};
+    const email = form.email.trim();
+    const message = form.message.trim();
+
+    if (!EMAIL_RE.test(email)) errs.email = "Invalid email address.";
+    if (!form.subject) errs.subject = "Please select an intent.";
+    if (!message) errs.message = "Message cannot be empty.";
+    else if (message.length > MAX_MSG) errs.message = `Max ${MAX_MSG} characters.`;
+
+    setFieldErr(errs);
+    return Object.keys(errs).length === 0;
+  }
+
+  async function send(e) {
+    e.preventDefault();
+
+    // Honeypot — silently reject bots that fill this field
+    if (honeypot) return;
+
+    // Double-submit guard
+    if (stage === "sending") return;
+
+    // Client-side rate limit
+    const elapsed = Date.now() - lastSentRef.current;
+    if (lastSentRef.current && elapsed < COOLDOWN * 1000) {
+      setCoolLeft(Math.ceil((COOLDOWN * 1000 - elapsed) / 1000));
+      setStage("cooldown");
+      return;
+    }
+
+    // Validation
+    if (!validate()) return;
+
+    // reCAPTCHA token
+    let captchaToken = "";
+    try {
+      captchaToken = window.grecaptcha.getResponse(widgetIdRef.current);
+    } catch (_) { }
+    if (!captchaToken) {
+      setFieldErr((p) => ({ ...p, captcha: "Please complete the CAPTCHA." }));
+      return;
+    }
+
+    setStage("sending");
+    setErrMsg("");
+
+    const payload = {
+      from_email: sanitize(form.email.trim()),
+      subject: sanitize(form.subject),
+      message: sanitize(form.message.trim()),
+      // to_email is hardcoded inside the EmailJS template — not passed here
+    };
+
+    try {
+      await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, payload, { publicKey: EMAILJS_PUBLIC_KEY });
+      lastSentRef.current = Date.now();
+      setStage("sent");
+    } catch (_) {
+      // Error detail intentionally suppressed — do not expose SDK internals
+      setErrMsg("Transmission failed. Please try again later or contact directly.");
+      setStage("error");
+      try { window.grecaptcha.reset(widgetIdRef.current); } catch (_e) { }
+    }
+  }
+
   function reset() {
     setStage("idle");
     setForm({ email: "", subject: "", message: "" });
+    setHoneypot("");
+    setFieldErr({});
+    setErrMsg("");
+    setCoolLeft(0);
+    try { window.grecaptcha.reset(widgetIdRef.current); } catch (_) { }
+    widgetIdRef.current = null;
   }
+
+  const errStyle = { fontSize: 10, color: "var(--pink)", letterSpacing: "0.12em", marginTop: 5, fontFamily: "'JetBrains Mono', monospace" };
 
   return (
     <div style={{ display: "flex", justifyContent: "center", marginTop: 40 }}>
       {stage === "idle" && (
         <button onClick={open} data-cursor="hover" style={{ position: "relative", padding: 0 }}>
-          <div style={{ position: "absolute", inset: -60, borderRadius: "50%",
+          <div style={{
+            position: "absolute", inset: -60, borderRadius: "50%",
             background: "radial-gradient(circle, rgba(0,245,255,0.25), transparent 70%)",
-            animation: "breathe 2.6s ease-in-out infinite" }} />
+            animation: "breathe 2.6s ease-in-out infinite"
+          }} />
           {[1, 2, 3].map((i) => (
             <div key={i} style={{
               position: "absolute", inset: -i * 22,
@@ -249,8 +387,8 @@ function ContactNode() {
         </button>
       )}
 
-      {(stage === "open" || stage === "sending") && (
-        <form onSubmit={send} className="glass brackets" style={{
+      {(stage === "open" || stage === "sending" || stage === "error") && (
+        <form onSubmit={send} noValidate className="glass brackets" style={{
           width: "100%", maxWidth: 640, padding: 32,
           opacity: stage === "sending" ? 0.6 : 1,
           transition: "opacity 220ms ease",
@@ -260,32 +398,69 @@ function ContactNode() {
             <span>{stage === "sending" ? "TX..." : "RX READY"}</span>
           </div>
 
+          {/* ── Honeypot — hidden from real users, visible to bots ── */}
+          <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", width: 1, height: 1, overflow: "hidden" }}>
+            <label htmlFor="hp_company">Company</label>
+            <input id="hp_company" name="company" type="text" tabIndex="-1" autoComplete="off"
+              value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
+          </div>
+
+          {/* ── Email ── */}
           <div style={{ marginBottom: 16 }}>
             <label className="field-label">▸ Origin (your email)</label>
             <input className="field" type="email" required placeholder="you@domain.com"
-              value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              maxLength={254}
+              value={form.email}
+              onChange={(e) => { setForm({ ...form, email: e.target.value }); setFieldErr((p) => ({ ...p, email: "" })); }} />
+            {fieldErr.email && <div style={errStyle}>▸ {fieldErr.email}</div>}
           </div>
+
+          {/* ── Intent ── */}
           <div style={{ marginBottom: 16 }}>
             <label className="field-label">▸ Intent</label>
             <select className="field" required value={form.subject}
-              onChange={(e) => setForm({ ...form, subject: e.target.value })}
+              onChange={(e) => { setForm({ ...form, subject: e.target.value }); setFieldErr((p) => ({ ...p, subject: "" })); }}
               style={{ appearance: "none" }}>
               <option value="">Select packet type...</option>
-              <option value="coffee">◇ Coffee chat</option>
-              <option value="collab">◆ Collaboration</option>
-              <option value="hire">▸ Hire / contract</option>
-              <option value="other">∴ Something else</option>
+              <option value="coffee chat">◇ Coffee chat</option>
+              <option value="collaboration">◆ Collaboration</option>
+              <option value="hire / contract">▸ Hire / contract</option>
+              <option value="others">∴ Something else</option>
             </select>
+            {fieldErr.subject && <div style={errStyle}>▸ {fieldErr.subject}</div>}
           </div>
+
+          {/* ── Message ── */}
           <div style={{ marginBottom: 22 }}>
             <label className="field-label">▸ Payload</label>
             <textarea className="field" required placeholder="Begin transmission..."
-              value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
+              maxLength={MAX_MSG}
+              value={form.message}
+              onChange={(e) => { setForm({ ...form, message: e.target.value }); setFieldErr((p) => ({ ...p, message: "" })); }} />
+            {fieldErr.message && <div style={errStyle}>▸ {fieldErr.message}</div>}
           </div>
+
+          {/* ── reCAPTCHA ── */}
+          <div style={{ marginBottom: 20 }}>
+            <div ref={captchaRef} />
+            {fieldErr.captcha && <div style={{ ...errStyle, marginTop: 8 }}>▸ {fieldErr.captcha}</div>}
+          </div>
+
+          {/* ── Error banner (stage === "error") ── */}
+          {stage === "error" && errMsg && (
+            <div className="mono" style={{
+              marginBottom: 16, padding: "10px 14px",
+              borderRadius: 8, border: "1px solid var(--pink)",
+              background: "rgba(255,43,214,0.06)",
+              fontSize: 11, color: "var(--pink)", letterSpacing: "0.1em", lineHeight: 1.6,
+            }}>
+              ▸ {errMsg}
+            </div>
+          )}
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
             <div className="mono" style={{ fontSize: 10, color: "var(--ink-faint)", letterSpacing: "0.16em" }}>
-              {form.message.length} BYTES · AES-256
+              {form.message.length}/{MAX_MSG} BYTES · AES-256
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button type="button" onClick={reset} className="btn" style={{ color: "var(--ink-dim)" }}>Abort</button>
@@ -295,6 +470,21 @@ function ContactNode() {
             </div>
           </div>
         </form>
+      )}
+
+      {/* ── Cooldown screen ── */}
+      {stage === "cooldown" && (
+        <div className="glass brackets" style={{ width: "100%", maxWidth: 520, padding: 40, textAlign: "center" }}>
+          <div style={{ fontSize: 48, marginBottom: 16, color: "var(--pink)" }}>⏳</div>
+          <div className="mono" style={{ color: "var(--pink)", letterSpacing: "0.22em", fontSize: 12, marginBottom: 12 }}>
+            ▸ RATE LIMIT ACTIVE
+          </div>
+          <div style={{ color: "var(--ink)", fontSize: 16, marginBottom: 8 }}>Channel cooling down.</div>
+          <div style={{ color: "var(--ink-dim)", fontSize: 14, marginBottom: 24 }}>
+            Please wait <span style={{ color: "var(--cyan)", fontFamily: "'JetBrains Mono', monospace" }}>{coolLeft}s</span> before retransmitting.
+          </div>
+          <button onClick={reset} className="btn">▸ Back to idle</button>
+        </div>
       )}
 
       {stage === "sent" && (
