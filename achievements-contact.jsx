@@ -325,6 +325,7 @@ function ContactNode() {
       from_email: sanitize(form.email.trim()),
       subject: sanitize(form.subject),
       message: sanitize(form.message.trim()),
+      reply_to: sanitize(form.email.trim())
       // to_email is hardcoded inside the EmailJS template — not passed here
     };
 
