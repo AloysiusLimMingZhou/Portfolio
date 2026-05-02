@@ -8,7 +8,7 @@ window.LEADERSHIP_DATA = {
       term: "2024 — present",
       summary: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.",
       stat: "00",
-      statLabel: "members",
+      statLabel: "member",
     },
     {
       id: "r2",
@@ -17,7 +17,7 @@ window.LEADERSHIP_DATA = {
       term: "2023 — 2024",
       summary: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo.",
       stat: "00",
-      statLabel: "mentees",
+      statLabel: "member",
     },
     {
       id: "r3",
@@ -26,7 +26,7 @@ window.LEADERSHIP_DATA = {
       term: "2023 — present",
       summary: "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
       stat: "00",
-      statLabel: "subs",
+      statLabel: "member",
     },
     {
       id: "r4",
@@ -35,7 +35,7 @@ window.LEADERSHIP_DATA = {
       term: "2025 — present",
       summary: "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est.",
       stat: "00",
-      statLabel: "founders",
+      statLabel: "member",
     },
   ],
   events: [

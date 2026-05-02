@@ -2,12 +2,12 @@
 
 /* Field hubs — large nodes that projects orbit around */
 window.PROJECT_FIELDS = [
-  { id: "ml",      label: "ML",       color: "#00f5ff", angle: -Math.PI * 0.5 },
-  { id: "web",     label: "Web",      color: "#9d00ff", angle: -Math.PI * 0.166 },
-  { id: "agentic", label: "Agentic",  color: "#5eead4", angle:  Math.PI * 0.166 },
-  { id: "cyber",   label: "Cyber",    color: "#ff2bd6", angle:  Math.PI * 0.5 },
-  { id: "devops",  label: "DevOps",   color: "#ffc857", angle:  Math.PI * 0.833 },
-  { id: "cloud",   label: "Cloud",    color: "#7dd3fc", angle: -Math.PI * 0.833 },
+  { id: "ml", label: "ML", color: "#00f5ff", angle: -Math.PI * 0.5 },
+  { id: "web", label: "Web", color: "#9d00ff", angle: -Math.PI * 0.166 },
+  { id: "agentic", label: "Agentic", color: "#5eead4", angle: Math.PI * 0.166 },
+  { id: "cyber", label: "Cyber", color: "#ff2bd6", angle: Math.PI * 0.5 },
+  { id: "devops", label: "DevOps", color: "#ffc857", angle: Math.PI * 0.833 },
+  { id: "cloud", label: "Cloud", color: "#7dd3fc", angle: -Math.PI * 0.833 },
 ];
 
 window.PORTFOLIO_DATA = {
@@ -35,7 +35,7 @@ window.PORTFOLIO_DATA = {
       tagline: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
       description:
         "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
-      stack: ["Rust", "PyTorch", "FAISS", "Neo4j", "Next.js"],
+      stack: ["lorum ipsum"],
       features: [
         "Lorem ipsum dolor sit amet consectetur",
         "Sed do eiusmod tempor incididunt ut labore",
@@ -54,7 +54,7 @@ window.PORTFOLIO_DATA = {
       tagline: "Sed ut perspiciatis unde omnis iste natus error sit voluptatem.",
       description:
         "Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.",
-      stack: ["Python", "LangGraph", "Postgres", "Redis"],
+      stack: ["lorum ipsum"],
       features: [
         "Neque porro quisquam est qui dolorem",
         "Ipsum quia dolor sit amet consectetur",
@@ -73,7 +73,7 @@ window.PORTFOLIO_DATA = {
       tagline: "At vero eos et accusamus et iusto odio dignissimos ducimus.",
       description:
         "Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et voluptates repudiandae sint et molestiae non recusandae.",
-      stack: ["TypeScript", "WebGL2", "Rust→WASM"],
+      stack: ["lorum ipsum"],
       features: [
         "Itaque earum rerum hic tenetur",
         "A sapiente delectus ut aut reiciendis",
@@ -92,7 +92,7 @@ window.PORTFOLIO_DATA = {
       tagline: "Quis autem vel eum iure reprehenderit qui in ea voluptate velit.",
       description:
         "Nam libero tempore cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus.",
-      stack: ["Go", "PyTorch", "Kafka", "ClickHouse"],
+      stack: ["lorum ipsum"],
       features: [
         "Omnis voluptas assumenda est omnis dolor",
         "Repellendus temporibus autem quibusdam",
@@ -111,7 +111,7 @@ window.PORTFOLIO_DATA = {
       tagline: "Nemo enim ipsam voluptatem quia voluptas sit aspernatur.",
       description:
         "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam.",
-      stack: ["React", "Vite", "IndexedDB", "Tauri"],
+      stack: ["lorum ipsum"],
       features: [
         "Eaque ipsa quae ab illo inventore",
         "Veritatis et quasi architecto beatae",
@@ -130,7 +130,7 @@ window.PORTFOLIO_DATA = {
       tagline: "Ut enim ad minima veniam quis nostrum exercitationem ullam.",
       description:
         "Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur.",
-      stack: ["Rust", "AFL++", "OpenAI API"],
+      stack: ["lorum ipsum"],
       features: [
         "Vel illum qui dolorem eum fugiat",
         "Quo voluptas nulla pariatur",
@@ -149,7 +149,7 @@ window.PORTFOLIO_DATA = {
       tagline: "Excepteur sint occaecat cupidatat non proident sunt in culpa.",
       description:
         "Sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit.",
-      stack: ["React", "Web Audio", "Framer Motion"],
+      stack: ["lorum ipsum"],
       features: [
         "Duis aute irure dolor in reprehenderit",
         "In voluptate velit esse cillum",
@@ -168,7 +168,7 @@ window.PORTFOLIO_DATA = {
       tagline: "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do.",
       description:
         "Eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip.",
-      stack: ["Python", "DSPy", "DuckDB"],
+      stack: ["lorum ipsum"],
       features: [
         "Ex ea commodo consequat duis aute",
         "Irure dolor in reprehenderit",
@@ -186,7 +186,7 @@ window.PORTFOLIO_DATA = {
       tagline: "Sed ut perspiciatis unde omnis iste natus error sit voluptatem.",
       description:
         "Accusantium doloremque laudantium totam rem aperiam eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.",
-      stack: ["Go", "Kubernetes", "ArgoCD", "Prometheus", "OPA"],
+      stack: ["lorum ipsum"],
       features: [
         "Nemo enim ipsam voluptatem quia voluptas",
         "Sit aspernatur aut odit aut fugit",
@@ -205,7 +205,7 @@ window.PORTFOLIO_DATA = {
       tagline: "Neque porro quisquam est qui dolorem ipsum quia dolor sit amet.",
       description:
         "Consectetur adipisci velit sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.",
-      stack: ["Terraform", "AWS", "GCP", "Pulumi", "Go"],
+      stack: ["lorum ipsum"],
       features: [
         "Ut enim ad minima veniam quis nostrum",
         "Exercitationem ullam corporis suscipit",
@@ -224,7 +224,7 @@ window.PORTFOLIO_DATA = {
       tagline: "Quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea.",
       description:
         "Commodo consequat duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
-      stack: ["Prometheus", "Grafana", "Loki", "k3s", "Linux"],
+      stack: ["lorum ipsum"],
       features: [
         "Excepteur sint occaecat cupidatat",
         "Non proident sunt in culpa qui officia",
