@@ -202,13 +202,10 @@ function AchievementsGraph({ data, onSelect }) {
 }
 
 /* ===== Contact Node ===== */
-
-// ─── EmailJS config — fill in your values ───────────────────────────────────
-const EMAILJS_SERVICE_ID = "service_hyasekt";   // e.g. "service_xxxxxxx"
-const EMAILJS_TEMPLATE_ID = "template_t3sfurj";  // e.g. "template_xxxxxxx"
-const EMAILJS_PUBLIC_KEY = "bP9JSr0ZRnSU-9K2w";   // e.g. "xxxxxxxxxxxxxxxxxxxx"
-const RECAPTCHA_SITE_KEY = "6LeKRdUsAAAAAMHSzc8RTJUW4bJN-xmRyaAj6-8e"; // from console.cloud.google.com
-// ────────────────────────────────────────────────────────────────────────────
+const EMAILJS_SERVICE_ID = "service_hyasekt";
+const EMAILJS_TEMPLATE_ID = "template_t3sfurj";
+const EMAILJS_PUBLIC_KEY = "bP9JSr0ZRnSU-9K2w";
+const RECAPTCHA_SITE_KEY = "6LeKRdUsAAAAAMHSzc8RTJUW4bJN-xmRyaAj6-8e";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const MAX_MSG = 1000;
@@ -226,7 +223,7 @@ function sanitize(str) {
 
 function ContactNode() {
   const [stage, setStage] = useStateA("idle"); // idle | open | sending | sent | error | cooldown
-  const [form, setForm] = useStateA({ email: "", subject: "", message: "" });
+  const [form, setForm] = useStateA({ email: "", title: "", subject: "", message: "" });
   const [honeypot, setHoneypot] = useStateA("");   // must stay empty
   const [fieldErr, setFieldErr] = useStateA({});   // per-field validation errors
   const [errMsg, setErrMsg] = useStateA("");      // global error message (stage === "error")
@@ -280,6 +277,8 @@ function ContactNode() {
     const message = form.message.trim();
 
     if (!EMAIL_RE.test(email)) errs.email = "Invalid email address.";
+    if (!form.title.trim()) errs.title = "Title cannot be empty.";
+    else if (form.title.trim().length > 120) errs.title = "Max 120 characters.";
     if (!form.subject) errs.subject = "Please select an intent.";
     if (!message) errs.message = "Message cannot be empty.";
     else if (message.length > MAX_MSG) errs.message = `Max ${MAX_MSG} characters.`;
@@ -323,9 +322,10 @@ function ContactNode() {
 
     const payload = {
       from_email: sanitize(form.email.trim()),
+      title: sanitize(form.title.trim()),
       subject: sanitize(form.subject),
       message: sanitize(form.message.trim()),
-      reply_to: sanitize(form.email.trim())
+      reply_to: sanitize(form.email.trim()),
       // to_email is hardcoded inside the EmailJS template — not passed here
     };
 
@@ -343,7 +343,7 @@ function ContactNode() {
 
   function reset() {
     setStage("idle");
-    setForm({ email: "", subject: "", message: "" });
+    setForm({ email: "", title: "", subject: "", message: "" });
     setHoneypot("");
     setFieldErr({});
     setErrMsg("");
@@ -414,6 +414,16 @@ function ContactNode() {
               value={form.email}
               onChange={(e) => { setForm({ ...form, email: e.target.value }); setFieldErr((p) => ({ ...p, email: "" })); }} />
             {fieldErr.email && <div style={errStyle}>▸ {fieldErr.email}</div>}
+          </div>
+
+          {/* ── Title ── */}
+          <div style={{ marginBottom: 16 }}>
+            <label className="field-label">▸ Title</label>
+            <input className="field" type="text" required placeholder="Brief subject line..."
+              maxLength={120}
+              value={form.title}
+              onChange={(e) => { setForm({ ...form, title: e.target.value }); setFieldErr((p) => ({ ...p, title: "" })); }} />
+            {fieldErr.title && <div style={errStyle}>▸ {fieldErr.title}</div>}
           </div>
 
           {/* ── Intent ── */}
