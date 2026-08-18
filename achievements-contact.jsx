@@ -129,7 +129,9 @@ function AchievementsGraph({ data, onSelect }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {items.map((a) => {
             const color = getTypeColor(a.type);
-            const isHov = hover === a.id;
+            // A hovered pie slice stores its achievement type, while a hovered
+            // card stores its id. Support both so mobile cards mirror desktop.
+            const isHov = hover === a.id || hover === a.type;
             return (
               <div key={a.id} data-cursor="hover"
                 onMouseEnter={() => setHover(a.id)} onMouseLeave={() => setHover(null)}

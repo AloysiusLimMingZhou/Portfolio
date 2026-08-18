@@ -294,7 +294,7 @@ function ProjectGraph({ data, onSelect }) {
 
     // min-distance relaxation: nodes vs nodes, and nodes vs hubs
     const NODE_R = 175;         // min center-to-center between projects
-    const HUB_R = 155;         // min center-to-center to a hub
+    const HUB_R = 230;         // keep project labels clear of the larger field hubs
     const PAD_X = 60, PAD_Y = 56;
 
     for (let pass = 0; pass < 240; pass++) {

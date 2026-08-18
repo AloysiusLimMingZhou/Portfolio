@@ -149,6 +149,7 @@ function LeadershipGraph({ onSelect }) {
   // events orbit their year hub — evenly distributed around a full circle
   const events = useMemoL(() => {
     const out = [];
+    const nodeEdgePadding = 72;
     // Safe ceiling: hub sits at size.h/2, nodes must stay ≥ 120px from top
     // and leave 140px at the bottom for the label block (72px label + padding).
     const safeRadius = Math.max(160, Math.floor(size.h / 2) - 130);
@@ -161,10 +162,13 @@ function LeadershipGraph({ onSelect }) {
       const startAngle = -Math.PI / 2; // 12 o'clock so first node appears on top
       items.forEach((ev, i) => {
         const a = startAngle + (i / n) * Math.PI * 2;
+        const rawPx = hub.px + Math.cos(a) * radius;
         out.push({
           ...ev,
           yearKey: y,
-          px: hub.px + Math.cos(a) * radius,
+          // Keep the event circle inside the graph even when an outer orbit
+          // would otherwise place it beyond the left or right canvas edge.
+          px: Math.min(Math.max(rawPx, nodeEdgePadding), size.w - nodeEdgePadding),
           py: hub.py + Math.sin(a) * radius,
           color: hub.color,
         });
@@ -308,6 +312,15 @@ function LeadershipGraph({ onSelect }) {
         const dim = hover && !inHL;
         const color = n.color;
         const pulse = 1 + Math.sin(tick * 1.1 + n.px * 0.01) * 0.04;
+        const edgeThreshold = Math.min(260, size.w * 0.28);
+        const nearLeftEdge = n.px <= edgeThreshold;
+        const nearRightEdge = n.px >= size.w - edgeThreshold;
+        const edgeLabelWidth = Math.min(380, size.w - 96);
+        const labelPosition = nearLeftEdge
+          ? { left: -8, width: edgeLabelWidth, textAlign: "left", whiteSpace: "normal" }
+          : nearRightEdge
+            ? { right: -8, width: edgeLabelWidth, textAlign: "right", whiteSpace: "normal" }
+            : { left: "50%", transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" };
         return (
           <div key={n.id} className="node-card" data-cursor="hover"
             style={{ left: n.px, top: n.py, opacity: dim ? 0.25 : 1, transition: "opacity 220ms ease", zIndex: isHover ? 7 : 4 }}
@@ -326,7 +339,7 @@ function LeadershipGraph({ onSelect }) {
               }}>
                 {n.id.slice(1)}
               </div>
-              <div style={{ position: "absolute", top: 72, left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap", pointerEvents: "none", textAlign: "center" }}>
+              <div style={{ position: "absolute", top: 72, pointerEvents: "none", ...labelPosition }}>
                 <div className="mono" style={{ fontSize: 11, color: isHover ? color : "var(--ink)", textShadow: isHover ? `0 0 10px ${color}` : "none", fontWeight: 600 }}>
                   {n.name}
                 </div>

@@ -16,7 +16,7 @@ window.PORTFOLIO_DATA = {
     title: "Aspiring AI Engineer | DevOps Focused",
     location: "Kuala Lumpur, Malaysia",
     summary:
-      "Driven Diploma in IT Student with a strong foundation in software engineering and a growing passion for artificial intelligence and machine learning. Actively building hands-on experience through personal projects, internships, and Hackathon competitions. Committed to developing practical AI solutions that bridge the gap between complex research and real-world applications. Seeking opportunities to contribute to innovative projects while expanding expertise in AI, DevOps, and full-stack development.",
+      "Driven Diploma in Information Technology student aspiring to become an AI Systems Engineer, with a strong foundation in software engineering, machine learning, and cloud technologies. Building hands-on experience in Agentic AI, production AI systems, Cloud Architecture, and DevOps through projects, internships, and hackathons. Passionate about building reliable, scalable AI systems and cloud-native applications for real-world use.",
     stats: [
       { label: "PROJECTS", value: "07" },
       { label: "DEPLOYED MODELS", value: "01" },
