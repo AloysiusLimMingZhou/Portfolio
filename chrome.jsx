@@ -159,20 +159,25 @@ function BootScreen({ onDone }) {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
+    const portfolio = window.PORTFOLIO_DATA;
+    const projectCount = portfolio.projects.length;
+    const achievementCount = portfolio.achievements.length;
+    const projectFieldRelations = portfolio.projects.reduce((total, project) => total + (project.fields?.length || 0), 0);
+    const okLine = (message) => <React.Fragment>  [<span className="ok">OK</span>] {message}</React.Fragment>;
     const script = [
-      { t: 0, text: "> initializing neural system..." },
-      { t: 380, text: "  [<span class='ok'>OK</span>] graph-runtime v3.4.2 booted" },
-      { t: 720, text: "  [<span class='ok'>OK</span>] establishing backbone connections" },
-      { t: 1080, text: "  [<span class='ok'>OK</span>] embedding model loaded · 768d" },
-      { t: 1380, text: "> loading aloysius_lim.neural_profile..." },
-      { t: 1820, text: "  > parsing 24 project nodes..." },
-      { t: 2120, text: "  > parsing 10 achievement nodes..." },
-      { t: 2400, text: "  > resolving 38 edge relations..." },
-      { t: 2700, text: "  [<span class='ok'>OK</span>] coherence check passed" },
-      { t: 3000, text: "> status: <span class='ok'>ACTIVE</span>" },
+      { t: 0, content: "> initializing neural system..." },
+      { t: 380, content: okLine("graph-runtime v3.4.2 booted") },
+      { t: 720, content: okLine("establishing backbone connections") },
+      { t: 1080, content: okLine("embedding model loaded · 768d") },
+      { t: 1380, content: "> loading aloysius_lim.neural_profile..." },
+      { t: 1820, content: `  > parsing ${projectCount} project nodes...` },
+      { t: 2120, content: `  > parsing ${achievementCount} achievement nodes...` },
+      { t: 2400, content: `  > resolving ${projectFieldRelations} project-field relations...` },
+      { t: 2700, content: okLine("coherence check passed") },
+      { t: 3000, content: <React.Fragment>&gt; status: <span className="ok">ACTIVE</span></React.Fragment> },
     ];
     const timers = script.map((s) =>
-      setTimeout(() => setLines((prev) => [...prev, s.text]), s.t)
+      setTimeout(() => setLines((prev) => [...prev, s.content]), s.t)
     );
     const finish = setTimeout(() => {
       setDone(true);
@@ -191,7 +196,7 @@ function BootScreen({ onDone }) {
           neural.interface · session 0xA17B
         </div>
         {lines.map((l, i) => (
-          <div key={i} className="boot-line" dangerouslySetInnerHTML={{ __html: l }} />
+          <div key={i} className="boot-line">{l}</div>
         ))}
         {!done && <div className="boot-line cursor-blink" />}
       </div>
@@ -204,7 +209,7 @@ function Nav({ activeSection }) {
   const items = [
     { id: "hero", num: "00", text: "root" },
     { id: "projects", num: "01", text: "projects" },
-    { id: "achievements", num: "02", text: "achievements" },
+    { id: "achievements", num: "02", text: "competitions" },
     { id: "leadership", num: "03", text: "leadership" },
     { id: "career", num: "04", text: "career" },
     { id: "skills", num: "05", text: "stack" },
@@ -354,3 +359,9 @@ Object.assign(window, { NeuralBackground, CustomCursor, BootScreen, Nav });
     history.pushState(null, "", href);
   }, false);
 })();
+
+// Transitional module bridge for the existing multi-file component layout.
+globalThis.NeuralBackground = NeuralBackground;
+globalThis.CustomCursor = CustomCursor;
+globalThis.BootScreen = BootScreen;
+globalThis.Nav = Nav;

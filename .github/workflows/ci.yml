@@ -23,14 +23,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
       # Verify all JSX files referenced in index.html actually exist
       - name: Check referenced JSX files exist
         run: |
           echo "Checking JSX file references in index.html..."
           missing=0
-          for file in data.jsx leadership-data.jsx chrome.jsx hero-projects.jsx \
+          for file in bootstrap.jsx data.jsx leadership-data.jsx chrome.jsx hero-projects.jsx \
                       achievements-contact.jsx leadership.jsx career.jsx \
-                      detail-modal.jsx app.jsx; do
+                      detail-modal.jsx app.jsx package.json; do
             if [ ! -f "$file" ]; then
               echo "❌ Missing: $file"
               missing=1
@@ -48,6 +63,12 @@ jobs:
         run: |
           python3 -c "import json, sys; json.load(open('vercel.json'))" && \
           echo "✅ vercel.json is valid JSON"
+
+      - name: Build production site
+        run: pnpm build
+
+      - name: Audit production dependencies
+        run: pnpm audit --prod --audit-level high
 
   # ─────────────────────────────────────────────
   # Job 2: Broken link checker
@@ -95,6 +116,7 @@ jobs:
         run: |
           echo "Auditing security headers in vercel.json..."
           required_headers=(
+            "Content-Security-Policy"
             "X-Content-Type-Options"
             "X-Frame-Options"
             "Referrer-Policy"

@@ -1,0 +1,21 @@
+{
+  "name": "aloysius-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.19.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "audit": "pnpm audit --audit-level high"
+  },
+  "dependencies": {
+    "@emailjs/browser": "4.4.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "vite": "8.2.1"
+  }
+}

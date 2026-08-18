@@ -5,82 +5,19 @@ const { useEffect: useEffectC, useRef: useRefC, useState: useStateC, useMemo: us
 window.CAREER_DATA = [
   {
     id: "c1",
-    company: "Lorem Ipsum Labs",
-    position: "Senior Lorem Engineer",
-    term: "2025 — present",
-    year: "2025",
-    location: "Remote · SG",
-    summary: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt.",
+    company: "Sunway Research Centre for Human-Machine Collaboration (HUMAC)",
+    position: "Research Intern",
+    term: "Apr 2026 — Jul 2026",
+    year: "2026",
+    location: "Subang Jaya",
+    summary: "Collaborated with a seven-member team to research, develop, and deploy a hexapod designed to support palm oil harvesting operations. Researched and evaluated cutting-edge deep reinforcement learning approaches to enable autonomous hexapod locomotion across realistically simulated uneven terrain.",
     achievements: [
-      "Lorem ipsum dolor sit amet consectetur adipiscing elit",
-      "Sed do eiusmod tempor incididunt ut labore et dolore",
-      "Ut enim ad minim veniam quis nostrud exercitation",
+      "Achieved stable omnidirectional hexapod locomotion on uneven terrain in virtual simulation with a 90%+ alignment rate",
+      "Attended the MonashRISE ECAN Research Colloquium",
+      "Submitted a research paper to the ICETA IET 2026 international conference; acceptance is currently pending",
     ],
-    skills: ["Rust", "PyTorch", "LangGraph", "Neo4j", "Kubernetes", "FAISS", "Distributed systems"],
+    skills: ["Research Methodology & Writing", "Reinforcement Learning", "Robotics Algorithms", "NVIDIA Isaac Sim", "Communication Skills"],
     color: "#00f5ff",
-  },
-  {
-    id: "c2",
-    company: "Dolor Sit Corp",
-    position: "Amet Platform Engineer",
-    term: "2023 — 2025",
-    year: "2023",
-    location: "Singapore",
-    summary: "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip.",
-    achievements: [
-      "Duis aute irure dolor in reprehenderit in voluptate",
-      "Velit esse cillum dolore eu fugiat nulla pariatur",
-      "Excepteur sint occaecat cupidatat non proident",
-    ],
-    skills: ["Python", "Go", "Kubernetes", "Triton", "Prometheus", "Grafana", "MLflow"],
-    color: "#9d00ff",
-  },
-  {
-    id: "c3",
-    company: "Consectetur Group",
-    position: "Software Engineer · Infra",
-    term: "2022 — 2023",
-    year: "2022",
-    location: "Singapore",
-    summary: "Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit.",
-    achievements: [
-      "Sed quia consequuntur magni dolores eos qui ratione",
-      "Voluptatem sequi nesciunt neque porro quisquam est",
-      "Qui dolorem ipsum quia dolor sit amet consectetur",
-    ],
-    skills: ["Go", "Envoy", "Kafka", "ClickHouse", "Linux", "AWS", "GCP"],
-    color: "#ff2bd6",
-  },
-  {
-    id: "c4",
-    company: "Adipiscing University",
-    position: "Research Assistant · Lorem ML",
-    term: "2021 — 2022",
-    year: "2021",
-    location: "Singapore",
-    summary: "Adipisci velit sed quia non numquam eius modi tempora incidunt ut labore et dolore.",
-    achievements: [
-      "Nam libero tempore cum soluta nobis est eligendi",
-      "Optio cumque nihil impedit quo minus id quod",
-      "Maxime placeat facere possimus omnis voluptas",
-    ],
-    skills: ["PyTorch", "PyTorch Geometric", "Linux", "Slurm", "Python"],
-    color: "#5eead4",
-  },
-  {
-    id: "c5",
-    company: "Elit Corp",
-    position: "SWE Intern · Lorem",
-    term: "2020",
-    year: "2020",
-    location: "Singapore",
-    summary: "Assumenda est omnis dolor repellendus temporibus autem quibusdam et aut officiis.",
-    achievements: [
-      "Debitis aut rerum necessitatibus saepe eveniet",
-      "Ut et voluptates repudiandae sint et molestiae",
-    ],
-    skills: ["Java", "Elasticsearch", "Python"],
-    color: "#ffc857",
   },
 ];
 
@@ -102,6 +39,11 @@ function CareerPath({ onSelect }) {
     </div>
   );
 }
+
+// Transitional module bridge for the existing multi-file component layout.
+globalThis.CareerPath = CareerPath;
+globalThis.TechSkillsGraph = TechSkillsGraph;
+globalThis.Testimonials = Testimonials;
 
 function CareerNode({ job, side, onSelect }) {
   const left = side === "left";
@@ -287,13 +229,26 @@ function TechSkillsGraph() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  const fields = window.SKILL_FIELDS;
+  const allFields = window.SKILL_FIELDS;
+
+  // Only show fields that have at least one skill node
+  const fields = useMemoC(() => {
+    const usedFields = new Set();
+    window.SKILL_NODES.forEach((n) => (n.fields || []).forEach((f) => usedFields.add(f)));
+    return allFields.filter((f) => usedFields.has(f.id));
+  }, []);
+
+  // hub positions: distribute active fields evenly on ring
   const hubs = useMemoC(() => {
     const cx = size.w / 2, cy = size.h / 2;
     const rx = Math.min(size.w * 0.35, 420);
     const ry = Math.min(size.h * 0.36, 280);
-    return fields.map((f) => ({ ...f, px: cx + Math.cos(f.angle) * rx, py: cy + Math.sin(f.angle) * ry }));
-  }, [size]);
+    return fields.map((f, i) => ({
+      ...f,
+      px: cx + Math.cos(-Math.PI / 2 + (i / fields.length) * Math.PI * 2) * rx,
+      py: cy + Math.sin(-Math.PI / 2 + (i / fields.length) * Math.PI * 2) * ry,
+    }));
+  }, [size, fields]);
   const hubIdx = Object.fromEntries(hubs.map((h) => [h.id, h]));
 
   const nodes = useMemoC(() => {
@@ -383,11 +338,10 @@ function TechSkillsGraph() {
 
   /* ── Mobile: stacked card layout grouped by skill field ── */
   if (isMobile) {
-    const allFields = window.SKILL_FIELDS;
     const allNodes = window.SKILL_NODES;
     return (
       <div ref={wrapRef} style={{ padding: "20px 0" }}>
-        {allFields.map((f) => {
+        {fields.map((f) => {
           const items = allNodes.filter((n) => (n.fields || []).includes(f.id));
           if (!items.length) return null;
           const color = f.color;
@@ -431,144 +385,13 @@ function TechSkillsGraph() {
 
   /* ── Desktop: SVG graph layout ── */
   return (
-    <div className="graph-wrap" ref={wrapRef} style={{ height: 720 }}>
-      <svg viewBox={`0 0 ${size.w} ${size.h}`} preserveAspectRatio="none">
-        <defs>
-          <filter id="sglow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="2.5" result="b" />
-            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-        </defs>
-        {/* node→hub edges */}
-        {nodes.map((n) =>
-          (n.fields || []).map((fid, i) => {
-            const h = hubIdx[fid]; if (!h) return null;
-            const active = highlight.nodesH.has(n.id) || highlight.hubsH.has(fid);
-            const dim = hover && !active;
-            return (
-              <line key={n.id + "-" + fid + "-" + i} x1={n.px} y1={n.py} x2={h.px} y2={h.py}
-                stroke={active ? h.color : `${h.color}44`}
-                strokeWidth={active ? 1.4 : 0.8}
-                opacity={dim ? 0.06 : 1}
-                filter={active ? "url(#sglow)" : ""} />
-            );
-          })
-        )}
-        {/* cross-skill edges */}
-        {window.SKILL_EDGES.map(([a, b], i) => {
-          const A = nodeIdx[a], B = nodeIdx[b]; if (!A || !B) return null;
-          const active = hover && hover.kind === "node" && (hover.id === a || hover.id === b);
-          const dim = hover && !active;
-          return (
-            <path key={"e" + i}
-              d={`M ${A.px} ${A.py} L ${B.px} ${B.py}`}
-              stroke="rgba(255,255,255,0.18)"
-              strokeWidth={active ? 1.4 : 0.7}
-              strokeDasharray="3 5"
-              strokeDashoffset={active ? -tick * 24 : 0}
-              opacity={dim ? 0.05 : (active ? 1 : 0.6)}
-              fill="none" />
-          );
-        })}
-      </svg>
-
-      {/* hubs */}
-      {hubs.map((h) => {
-        const isHover = hover && hover.kind === "hub" && hover.id === h.id;
-        const inHL = highlight.hubsH.has(h.id);
-        const dim = hover && !inHL;
-        return (
-          <div key={h.id} className="node-card" data-cursor="hover"
-            style={{ left: h.px, top: h.py, opacity: dim ? 0.35 : 1, zIndex: isHover ? 6 : 3 }}
-            onMouseEnter={() => setHover({ kind: "hub", id: h.id })}
-            onMouseLeave={() => setHover(null)}>
-            <div style={{ position: "relative", transform: `scale(${isHover ? 1.06 : 1})`, transition: "transform 200ms" }}>
-              <div style={{
-                position: "absolute", inset: -28, borderRadius: "50%",
-                background: `radial-gradient(circle, ${h.color}40, transparent 70%)`,
-                opacity: isHover ? 1 : 0.55, pointerEvents: "none",
-              }} />
-              <svg width="132" height="132" style={{ position: "absolute", left: -16, top: -16, pointerEvents: "none" }}>
-                <circle cx="66" cy="66" r="60" fill="none" stroke={h.color}
-                  strokeOpacity={isHover ? 0.7 : 0.22} strokeWidth="1" strokeDasharray="2 8"
-                  style={{ transformOrigin: "66px 66px", animation: "spin 22s linear infinite" }} />
-              </svg>
-              <div className="glass mono" style={{
-                width: 100, height: 100, borderRadius: "50%",
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                border: `1.5px solid ${h.color}`,
-                background: `radial-gradient(circle at 30% 30%, ${h.color}26, rgba(10,10,18,0.85) 70%)`,
-                boxShadow: isHover
-                  ? `0 0 50px ${h.color}aa, inset 0 0 28px ${h.color}40`
-                  : `0 0 22px ${h.color}55, inset 0 0 16px ${h.color}25`,
-                color: h.color,
-              }}>
-                <div style={{ fontSize: 9, opacity: 0.65, letterSpacing: "0.2em" }}>STACK</div>
-                <div className="display" style={{ fontSize: 16, fontWeight: 600, marginTop: 2, color: "var(--ink)", textShadow: `0 0 12px ${h.color}` }}>
-                  {h.label}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-
-      {/* skill nodes */}
-      {nodes.map((n) => {
-        const isHover = hover && hover.kind === "node" && hover.id === n.id;
-        const inHL = highlight.nodesH.has(n.id);
-        const dim = hover && !inHL;
-        const primary = (n.fields || [])[0];
-        const color = (hubIdx[primary] && hubIdx[primary].color) || "#00f5ff";
-        const overlap = (n.fields || []).length > 1;
-        return (
-          <div key={n.id} className="node-card" data-cursor="hover"
-            style={{ left: n.px, top: n.py, opacity: dim ? 0.25 : 1, transition: "opacity 220ms ease", zIndex: isHover ? 7 : 4 }}
-            onMouseEnter={() => setHover({ kind: "node", id: n.id })}
-            onMouseLeave={() => setHover(null)}>
-            <div style={{ position: "relative", transform: `scale(${isHover ? 1.1 : 1})`, transition: "transform 200ms" }}>
-              <div className="glass mono" style={{
-                padding: "8px 12px",
-                borderRadius: 999,
-                border: `1px solid ${isHover ? color : `${color}77`}`,
-                background: isHover ? `${color}1a` : "rgba(10, 10, 18, 0.85)",
-                boxShadow: isHover
-                  ? `0 0 22px ${color}aa, inset 0 0 10px ${color}30`
-                  : `0 0 8px ${color}30`,
-                color: isHover ? color : "var(--ink)",
-                fontSize: 11, fontWeight: 500,
-                whiteSpace: "nowrap",
-                position: "relative",
-                display: "inline-flex", alignItems: "center", gap: 7,
-              }}>
-                <span aria-hidden="true" style={{
-                  fontSize: n.icon && n.icon.length > 1 && n.icon.charCodeAt(0) < 128 ? 9 : 13,
-                  lineHeight: 1, color, letterSpacing: 0,
-                  fontFamily: n.icon === "TS" ? "JetBrains Mono, monospace" : "inherit",
-                  fontWeight: n.icon === "TS" ? 700 : 400,
-                  filter: isHover ? `drop-shadow(0 0 4px ${color})` : "none",
-                }}>{n.icon || "◇"}</span>
-                {n.name}
-                {overlap && (
-                  <span style={{
-                    position: "absolute", top: -3, right: -3,
-                    width: 8, height: 8, borderRadius: "50%",
-                    background: (hubIdx[(n.fields || [])[1]] && hubIdx[(n.fields || [])[1]].color) || color,
-                    border: "1px solid rgba(10,10,18,0.9)",
-                    boxShadow: `0 0 6px ${color}`,
-                  }} />
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })}
-
-      {/* legend */}
+    <div style={{ position: "relative" }}>
+      {/* legend — always above the canvas, never overlapping nodes */}
       <div className="glass mono" style={{
-        position: "absolute", top: 16, right: 16, padding: "10px 14px",
+        display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap",
+        padding: "10px 14px", marginBottom: 12,
         fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase",
-        display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", maxWidth: 460,
+        width: "fit-content", marginLeft: "auto",
       }}>
         {fields.map((f) => (
           <span key={f.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--ink-dim)" }}>
@@ -576,6 +399,140 @@ function TechSkillsGraph() {
             {f.label}
           </span>
         ))}
+      </div>
+
+      <div className="graph-wrap" ref={wrapRef} style={{ height: 720 }}>
+        <svg viewBox={`0 0 ${size.w} ${size.h}`} preserveAspectRatio="none">
+          <defs>
+            <filter id="sglow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2.5" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
+          {/* node→hub edges */}
+          {nodes.map((n) =>
+            (n.fields || []).map((fid, i) => {
+              const h = hubIdx[fid]; if (!h) return null;
+              const active = highlight.nodesH.has(n.id) || highlight.hubsH.has(fid);
+              const dim = hover && !active;
+              return (
+                <line key={n.id + "-" + fid + "-" + i} x1={n.px} y1={n.py} x2={h.px} y2={h.py}
+                  stroke={active ? h.color : `${h.color}44`}
+                  strokeWidth={active ? 1.4 : 0.8}
+                  opacity={dim ? 0.06 : 1}
+                  filter={active ? "url(#sglow)" : ""} />
+              );
+            })
+          )}
+          {/* cross-skill edges */}
+          {window.SKILL_EDGES.map(([a, b], i) => {
+            const A = nodeIdx[a], B = nodeIdx[b]; if (!A || !B) return null;
+            const active = hover && hover.kind === "node" && (hover.id === a || hover.id === b);
+            const dim = hover && !active;
+            return (
+              <path key={"e" + i}
+                d={`M ${A.px} ${A.py} L ${B.px} ${B.py}`}
+                stroke="rgba(255,255,255,0.18)"
+                strokeWidth={active ? 1.4 : 0.7}
+                strokeDasharray="3 5"
+                strokeDashoffset={active ? -tick * 24 : 0}
+                opacity={dim ? 0.05 : (active ? 1 : 0.6)}
+                fill="none" />
+            );
+          })}
+        </svg>
+
+        {/* hubs */}
+        {hubs.map((h) => {
+          const isHover = hover && hover.kind === "hub" && hover.id === h.id;
+          const inHL = highlight.hubsH.has(h.id);
+          const dim = hover && !inHL;
+          return (
+            <div key={h.id} className="node-card" data-cursor="hover"
+              style={{ left: h.px, top: h.py, opacity: dim ? 0.35 : 1, zIndex: isHover ? 6 : 3 }}
+              onMouseEnter={() => setHover({ kind: "hub", id: h.id })}
+              onMouseLeave={() => setHover(null)}>
+              <div style={{ position: "relative", transform: `scale(${isHover ? 1.06 : 1})`, transition: "transform 200ms" }}>
+                <div style={{
+                  position: "absolute", inset: -28, borderRadius: "50%",
+                  background: `radial-gradient(circle, ${h.color}40, transparent 70%)`,
+                  opacity: isHover ? 1 : 0.55, pointerEvents: "none",
+                }} />
+                <svg width="132" height="132" style={{ position: "absolute", left: -16, top: -16, pointerEvents: "none" }}>
+                  <circle cx="66" cy="66" r="60" fill="none" stroke={h.color}
+                    strokeOpacity={isHover ? 0.7 : 0.22} strokeWidth="1" strokeDasharray="2 8"
+                    style={{ transformOrigin: "66px 66px", animation: "spin 22s linear infinite" }} />
+                </svg>
+                <div className="glass mono" style={{
+                  width: 100, height: 100, borderRadius: "50%",
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  border: `1.5px solid ${h.color}`,
+                  background: `radial-gradient(circle at 30% 30%, ${h.color}26, rgba(10,10,18,0.85) 70%)`,
+                  boxShadow: isHover
+                    ? `0 0 50px ${h.color}aa, inset 0 0 28px ${h.color}40`
+                    : `0 0 22px ${h.color}55, inset 0 0 16px ${h.color}25`,
+                  color: h.color,
+                }}>
+                  <div style={{ fontSize: 9, opacity: 0.65, letterSpacing: "0.2em" }}>STACK</div>
+                  <div className="display" style={{ fontSize: 16, fontWeight: 600, marginTop: 2, color: "var(--ink)", textShadow: `0 0 12px ${h.color}` }}>
+                    {h.label}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* skill nodes */}
+        {nodes.map((n) => {
+          const isHover = hover && hover.kind === "node" && hover.id === n.id;
+          const inHL = highlight.nodesH.has(n.id);
+          const dim = hover && !inHL;
+          const primary = (n.fields || [])[0];
+          const color = (hubIdx[primary] && hubIdx[primary].color) || "#00f5ff";
+          const overlap = (n.fields || []).length > 1;
+          return (
+            <div key={n.id} className="node-card" data-cursor="hover"
+              style={{ left: n.px, top: n.py, opacity: dim ? 0.25 : 1, transition: "opacity 220ms ease", zIndex: isHover ? 7 : 4 }}
+              onMouseEnter={() => setHover({ kind: "node", id: n.id })}
+              onMouseLeave={() => setHover(null)}>
+              <div style={{ position: "relative", transform: `scale(${isHover ? 1.1 : 1})`, transition: "transform 200ms" }}>
+                <div className="glass mono" style={{
+                  padding: "8px 12px",
+                  borderRadius: 999,
+                  border: `1px solid ${isHover ? color : `${color}77`}`,
+                  background: isHover ? `${color}1a` : "rgba(10, 10, 18, 0.85)",
+                  boxShadow: isHover
+                    ? `0 0 22px ${color}aa, inset 0 0 10px ${color}30`
+                    : `0 0 8px ${color}30`,
+                  color: isHover ? color : "var(--ink)",
+                  fontSize: 11, fontWeight: 500,
+                  whiteSpace: "nowrap",
+                  position: "relative",
+                  display: "inline-flex", alignItems: "center", gap: 7,
+                }}>
+                  <span aria-hidden="true" style={{
+                    fontSize: n.icon && n.icon.length > 1 && n.icon.charCodeAt(0) < 128 ? 9 : 13,
+                    lineHeight: 1, color, letterSpacing: 0,
+                    fontFamily: n.icon === "TS" ? "JetBrains Mono, monospace" : "inherit",
+                    fontWeight: n.icon === "TS" ? 700 : 400,
+                    filter: isHover ? `drop-shadow(0 0 4px ${color})` : "none",
+                  }}>{n.icon || "◇"}</span>
+                  {n.name}
+                  {overlap && (
+                    <span style={{
+                      position: "absolute", top: -3, right: -3,
+                      width: 8, height: 8, borderRadius: "50%",
+                      background: (hubIdx[(n.fields || [])[1]] && hubIdx[(n.fields || [])[1]].color) || color,
+                      border: "1px solid rgba(10,10,18,0.9)",
+                      boxShadow: `0 0 6px ${color}`,
+                    }} />
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

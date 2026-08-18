@@ -105,7 +105,11 @@ function App() {
               </p>
             </div>
             <div className="mono glass" style={{ padding: "10px 14px", fontSize: 10, letterSpacing: "0.18em", color: "var(--ink-dim)" }}>
-              {data.projects.length} NODES · {window.PROJECT_FIELDS.length} FIELDS
+              {data.projects.length} NODES · {(() => {
+                const used = new Set();
+                data.projects.forEach((p) => (p.fields || []).forEach((f) => used.add(f)));
+                return used.size;
+              })()} FIELDS
             </div>
           </div>
           <div className="reveal delay-1">
@@ -120,11 +124,11 @@ function App() {
           <div className="reveal" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 48, flexWrap: "wrap", gap: 20 }}>
             <div>
               <span className="section-tag" style={{ color: "var(--pink)", borderColor: "rgba(255, 43, 214, 0.3)", background: "rgba(255, 43, 214, 0.05)" }}>
-                section · 02 / achievements
+                section · 02 / competitions
               </span>
-              <h2 className="section-title">Clustered by <span className="glow-pink">domain</span>.</h2>
+              <h2 className="section-title">Where I <span className="glow-pink">competed</span>.</h2>
               <p className="section-sub">
-                Talks, papers, ranks, and releases — grouped into the four basins they pull toward.
+                Hackathons, challenges, and ranked events — broken down by outcome in one chart.
               </p>
             </div>
           </div>
@@ -132,7 +136,7 @@ function App() {
             <AchievementsGraph data={data} onSelect={(a) => setActiveItem(window.achievementToItem(a))} />
           </div>
           <div className="reveal delay-2 mono" style={{ textAlign: "center", marginTop: 24, fontSize: 11, color: "var(--ink-faint)", letterSpacing: "0.18em" }}>
-            ▸ CLICK ANY NODE TO EXPAND
+            ▸ HOVER SLICES TO INSPECT · CLICK CARDS TO EXPAND
           </div>
         </section>
 

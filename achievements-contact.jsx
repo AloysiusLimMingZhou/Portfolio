@@ -1,202 +1,286 @@
-/* Achievements graph + Contact node + Footer */
+/* Achievements pie chart + Contact node + Footer */
 const { useEffect: useEffectA, useRef: useRefA, useState: useStateA, useMemo: useMemoA } = React;
 
 const CLUSTER_COLORS = {
-  research: "#00f5ff",
   competitions: "#ff2bd6",
-  "open-source": "#9d00ff",
-  press: "#ffc857",
 };
+
+/* ── Pie-slice color palette — keyed by exact type strings from data.jsx ── */
+const TYPE_COLORS = {
+  "Capture The Flag":  "#00f5ff",   // cyan
+  "Hackathon":         "#ff2bd6",   // pink
+  "AI Competition":    "#9d00ff",   // purple
+  "Project Showcasing":"#ffc857",   // amber
+  // add more types here as needed
+  default:             "#5eead4",   // teal fallback
+};
+
+function getTypeColor(type) {
+  return TYPE_COLORS[type] || TYPE_COLORS.default;
+}
+
+// Transitional module bridge for the existing multi-file component layout.
+globalThis.AchievementsGraph = AchievementsGraph;
+globalThis.ContactNode = ContactNode;
+globalThis.Footer = Footer;
+
+/* ── SVG arc path helper ── */
+function describeArc(cx, cy, r, startAngle, endAngle) {
+  const start = { x: cx + r * Math.cos(startAngle), y: cy + r * Math.sin(startAngle) };
+  const end   = { x: cx + r * Math.cos(endAngle),   y: cy + r * Math.sin(endAngle) };
+  const large = endAngle - startAngle > Math.PI ? 1 : 0;
+  return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${large} 1 ${end.x} ${end.y} Z`;
+}
 
 function AchievementsGraph({ data, onSelect }) {
   const wrapRef = useRefA(null);
-  const [size, setSize] = useStateA({ w: 1200, h: 880 });
   const [hover, setHover] = useStateA(null);
+  const [animProg, setAnimProg] = useStateA(0);     // 0→1 mount animation
   const [isMobile, setIsMobile] = useStateA(window.innerWidth <= 720);
 
+  // Only competitions
+  const items = useMemoA(
+    () => data.achievements.filter((a) => a.cluster === "competitions"),
+    [data.achievements]
+  );
+
+  // Aggregate by type for the pie
+  const slices = useMemoA(() => {
+    const counts = {};
+    items.forEach((a) => { counts[a.type] = (counts[a.type] || 0) + 1; });
+    const total = items.length || 1;
+    let cursor = -Math.PI / 2; // start at 12 o'clock
+    return Object.entries(counts).map(([type, count]) => {
+      const sweep = (count / total) * Math.PI * 2;
+      const slice = { type, count, pct: Math.round((count / total) * 100), start: cursor, end: cursor + sweep, color: getTypeColor(type) };
+      cursor += sweep;
+      return slice;
+    });
+  }, [items]);
+
+  // mount animation
   useEffectA(() => {
-    function measure() {
-      if (!wrapRef.current) return;
-      const r = wrapRef.current.getBoundingClientRect();
-      setSize({ w: r.width, h: r.height });
-      setIsMobile(window.innerWidth <= 720);
+    let raf; let t0 = null;
+    function tick(ts) {
+      if (!t0) t0 = ts;
+      const p = Math.min((ts - t0) / 900, 1);
+      // ease-out cubic
+      setAnimProg(1 - Math.pow(1 - p, 3));
+      if (p < 1) raf = requestAnimationFrame(tick);
     }
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, []);
 
-  // cluster centers
-  const clusters = ["research", "competitions", "open-source", "press"];
-  const positions = useMemoA(() => {
-    const out = {};
-    const cx = size.w / 2;
-    const cy = size.h / 2;
-    // pull cluster centers tighter to vertical center, more vertical spread
-    clusters.forEach((c, ci) => {
-      const angle = (ci / clusters.length) * Math.PI * 2 - Math.PI / 2;
-      const cxC = cx + Math.cos(angle) * Math.min(size.w * 0.34, 380);
-      const cyC = cy + Math.sin(angle) * Math.min(size.h * 0.28, 230);
-      const inCluster = data.achievements.filter((a) => a.cluster === c);
-      inCluster.forEach((a, i) => {
-        const r = 100 + (inCluster.length > 2 ? 40 : 0);
-        const subAngle = (i / inCluster.length) * Math.PI * 2;
-        out[a.id] = {
-          x: cxC + Math.cos(subAngle) * r * (inCluster.length > 1 ? 1 : 0),
-          y: cyC + Math.sin(subAngle) * r * (inCluster.length > 1 ? 1 : 0),
-          cluster: c,
-          centerX: cxC,
-          centerY: cyC,
-        };
-      });
-    });
-    return out;
-  }, [size, data.achievements]);
+  useEffectA(() => {
+    function onResize() { setIsMobile(window.innerWidth <= 720); }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
-  /* ── Mobile: stacked card layout ── */
+  const RADIUS = isMobile ? 130 : 220;
+  const INNER  = isMobile ? 70  : 120;   // donut hole
+  const SVG    = (RADIUS + 40) * 2;
+  const CX     = SVG / 2;
+  const CY     = SVG / 2;
+
+  /* ── Mobile: simple card + mini donut ── */
   if (isMobile) {
     return (
       <div ref={wrapRef} style={{ padding: "20px 0" }}>
-        {clusters.map((c) => {
-          const items = data.achievements.filter((a) => a.cluster === c);
-          if (!items.length) return null;
-          const color = CLUSTER_COLORS[c];
-          return (
-            <div key={c} style={{ marginBottom: 28 }}>
-              <div className="mono" style={{
-                fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase",
-                color: color, marginBottom: 12, textShadow: `0 0 12px ${color}`,
-              }}>
-                ◆ {c}
+        {/* mini donut */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
+          <svg width={SVG} height={SVG} viewBox={`0 0 ${SVG} ${SVG}`} style={{ maxWidth: "90vw" }}>
+            <defs>
+              <filter id="pie-glow-m" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="8" />
+              </filter>
+            </defs>
+            {/* glow underlayer */}
+            {slices.map((s, i) => {
+              const aSweep = (s.end - s.start) * animProg;
+              const aEnd   = s.start + aSweep;
+              return <path key={`gm${i}`} d={describeArc(CX, CY, RADIUS, s.start, aEnd)} fill={s.color} opacity="0.18" filter="url(#pie-glow-m)" />;
+            })}
+            {slices.map((s, i) => {
+              const aSweep = (s.end - s.start) * animProg;
+              const aEnd   = s.start + aSweep;
+              const isHov  = hover === s.type;
+              const r      = isHov ? RADIUS + 8 : RADIUS;
+              return (
+                <path key={`sm${i}`} d={describeArc(CX, CY, r, s.start, aEnd)}
+                  fill={s.color} opacity={isHov ? 1 : 0.85}
+                  stroke="rgba(10,10,18,0.9)" strokeWidth="2"
+                  style={{ transition: "all 220ms ease", cursor: "pointer" }}
+                  onMouseEnter={() => setHover(s.type)} onMouseLeave={() => setHover(null)}
+                />
+              );
+            })}
+            {/* donut hole */}
+            <circle cx={CX} cy={CY} r={INNER} fill="rgba(10,10,18,0.95)" />
+            <circle cx={CX} cy={CY} r={INNER} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+            {/* center label */}
+            <text x={CX} y={CY - 10} textAnchor="middle" fill="#ffffff" fontSize="22" fontFamily="'Outfit', sans-serif" fontWeight="700">{items.length}</text>
+            <text x={CX} y={CY + 12} textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="9" fontFamily="'JetBrains Mono', monospace" letterSpacing="3">COMPETITIONS</text>
+          </svg>
+        </div>
+
+        {/* cards */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {items.map((a) => {
+            const color = getTypeColor(a.type);
+            const isHov = hover === a.id;
+            return (
+              <div key={a.id} data-cursor="hover"
+                onMouseEnter={() => setHover(a.id)} onMouseLeave={() => setHover(null)}
+                onClick={() => onSelect && onSelect(a)}>
+                <div className="glass mono" style={{
+                  padding: "12px 16px", borderRadius: 8,
+                  border: `1px solid ${isHov ? color : "rgba(255,255,255,0.12)"}`,
+                  background: isHov ? `${color}14` : "rgba(10, 10, 18, 0.85)",
+                  boxShadow: isHov ? `0 0 24px ${color}80` : `0 0 8px ${color}20`,
+                  transition: "all 220ms cubic-bezier(.2,.7,.2,1)",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 9, letterSpacing: "0.16em" }}>
+                    <span style={{ color }}>◆ {a.type.toUpperCase()}</span>
+                    <span style={{ color: "var(--ink-faint)" }}>{a.year}</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 600, marginBottom: 2 }}>{a.name}</div>
+                  <div style={{ fontSize: 10, color: "var(--ink-dim)" }}>{a.note}</div>
+                </div>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {items.map((a) => {
-                  const isHover = hover === a.id;
-                  return (
-                    <div key={a.id} data-cursor="hover"
-                      onMouseEnter={() => setHover(a.id)} onMouseLeave={() => setHover(null)}
-                      onClick={() => onSelect && onSelect(a)}>
-                      <div className="glass mono" style={{
-                        padding: "12px 16px",
-                        borderRadius: 8,
-                        border: `1px solid ${isHover ? color : "rgba(255,255,255,0.12)"}`,
-                        background: isHover ? `${color}14` : "rgba(10, 10, 18, 0.85)",
-                        boxShadow: isHover ? `0 0 24px ${color}80` : `0 0 8px ${color}20`,
-                        transition: "all 220ms cubic-bezier(.2,.7,.2,1)",
-                      }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 9, letterSpacing: "0.16em" }}>
-                          <span style={{ color: color }}>◆ {a.type.toUpperCase()}</span>
-                          <span style={{ color: "var(--ink-faint)" }}>{a.year}</span>
-                        </div>
-                        <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 600, marginBottom: 2, wordBreak: "break-word" }}>{a.name}</div>
-                        <div style={{ fontSize: 10, color: "var(--ink-dim)", wordBreak: "break-word" }}>{a.note}</div>
-                      </div>
-                    </div>
-                  );
-                })}
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Desktop: large centered pie chart ── */
+  return (
+    <div ref={wrapRef} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 48 }}>
+      {/* PIE */}
+      <div style={{ position: "relative", width: SVG, height: SVG }}>
+        <svg width={SVG} height={SVG} viewBox={`0 0 ${SVG} ${SVG}`}>
+          <defs>
+            <filter id="pie-glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="14" />
+            </filter>
+            <filter id="pie-glow-sm" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="5" />
+            </filter>
+            {/* rotating dashed ring */}
+            <clipPath id="donut-clip">
+              <circle cx={CX} cy={CY} r={RADIUS + 30} />
+            </clipPath>
+          </defs>
+
+          {/* outer decorative rings */}
+          <circle cx={CX} cy={CY} r={RADIUS + 28} fill="none" stroke="rgba(255,43,214,0.10)" strokeWidth="1" strokeDasharray="3 8" style={{ animation: "spin-slow 60s linear infinite" }} />
+          <circle cx={CX} cy={CY} r={RADIUS + 22} fill="none" stroke="rgba(0,245,255,0.06)" strokeWidth="1" strokeDasharray="1 12" style={{ animation: "spin-slow 90s linear infinite reverse" }} />
+
+          {/* glow underlayer */}
+          {slices.map((s, i) => {
+            const aSweep = (s.end - s.start) * animProg;
+            const aEnd   = s.start + aSweep;
+            return <path key={`g${i}`} d={describeArc(CX, CY, RADIUS, s.start, aEnd)} fill={s.color} opacity="0.15" filter="url(#pie-glow)" />;
+          })}
+
+          {/* main slices */}
+          {slices.map((s, i) => {
+            const aSweep = (s.end - s.start) * animProg;
+            const aEnd   = s.start + aSweep;
+            const isHov  = hover === s.type;
+            const r      = isHov ? RADIUS + 14 : RADIUS;
+            return (
+              <path key={`s${i}`} d={describeArc(CX, CY, r, s.start, aEnd)}
+                fill={s.color} opacity={isHov ? 1 : 0.82}
+                stroke="rgba(10,10,18,0.9)" strokeWidth="2.5"
+                style={{ transition: "all 260ms cubic-bezier(.2,.7,.2,1)", cursor: "pointer" }}
+                onMouseEnter={() => setHover(s.type)} onMouseLeave={() => setHover(null)}
+                data-cursor="hover"
+              />
+            );
+          })}
+
+          {/* bright edge highlights */}
+          {slices.map((s, i) => {
+            const aSweep = (s.end - s.start) * animProg;
+            const aEnd   = s.start + aSweep;
+            const isHov  = hover === s.type;
+            if (!isHov) return null;
+            const r = RADIUS + 14;
+            return <path key={`h${i}`} d={describeArc(CX, CY, r, s.start, aEnd)} fill="none" stroke={s.color} strokeWidth="2" filter="url(#pie-glow-sm)" />;
+          })}
+
+          {/* donut hole */}
+          <circle cx={CX} cy={CY} r={INNER} fill="rgba(10,10,18,0.92)" />
+          <circle cx={CX} cy={CY} r={INNER} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
+          <circle cx={CX} cy={CY} r={INNER - 6} fill="none" stroke="rgba(255,43,214,0.08)" strokeWidth="1" strokeDasharray="2 6" />
+
+          {/* center label */}
+          <text x={CX} y={CY - 16} textAnchor="middle" fill="#ffffff" fontSize="42" fontFamily="'Outfit', sans-serif" fontWeight="700"
+            style={{ opacity: animProg }}>{items.length}</text>
+          <text x={CX} y={CY + 10} textAnchor="middle" fill="rgba(255,255,255,0.7)" fontSize="11" fontFamily="'JetBrains Mono', monospace"
+            letterSpacing="4" style={{ opacity: animProg, textTransform: "uppercase" }}>competitions</text>
+          <text x={CX} y={CY + 30} textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="9" fontFamily="'JetBrains Mono', monospace"
+            letterSpacing="2" style={{ opacity: animProg * 0.7 }}>◆ HOVER TO INSPECT</text>
+
+          {/* slice labels */}
+          {slices.map((s, i) => {
+            const aSweep = (s.end - s.start) * animProg;
+            const aEnd   = s.start + aSweep;
+            const mid    = s.start + aSweep / 2;
+            const lr     = RADIUS * 0.72;
+            const lx     = CX + Math.cos(mid) * lr;
+            const ly     = CY + Math.sin(mid) * lr;
+            const isHov  = hover === s.type;
+            if (animProg < 0.5) return null;
+            return (
+              <g key={`l${i}`} style={{ opacity: (animProg - 0.5) * 2, pointerEvents: "none" }}>
+                <text x={lx} y={ly - 6} textAnchor="middle" fill="#ffffff" fontSize="14" fontFamily="'Outfit', sans-serif" fontWeight="700"
+                  style={{ textShadow: `0 0 10px ${s.color}` }}>{s.pct}%</text>
+                <text x={lx} y={ly + 10} textAnchor="middle" fill="#ffffff" fontSize="9" fontFamily="'JetBrains Mono', monospace"
+                  letterSpacing="2" style={{ textShadow: `0 0 8px ${s.color}`, textTransform: "uppercase" }}>{s.type}</text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* ── Legend + detail cards ── */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 32, flexWrap: "wrap", maxWidth: 860, width: "100%" }}>
+        {items.map((a) => {
+          const color  = getTypeColor(a.type);
+          const isHov  = hover === a.id || hover === a.type;
+          return (
+            <div key={a.id} data-cursor="hover"
+              style={{ flex: "1 1 220px", maxWidth: 280, opacity: animProg }}
+              onMouseEnter={() => setHover(a.id)} onMouseLeave={() => setHover(null)}
+              onClick={() => onSelect && onSelect(a)}>
+              <div className="glass mono" style={{
+                padding: "14px 18px", borderRadius: 10,
+                border: `1px solid ${isHov ? color : "rgba(255,255,255,0.10)"}`,
+                background: isHov ? `${color}14` : "rgba(10, 10, 18, 0.85)",
+                boxShadow: isHov ? `0 0 32px ${color}60` : `0 0 8px ${color}15`,
+                transform: isHov ? "translateY(-4px) scale(1.03)" : "none",
+                transition: "all 260ms cubic-bezier(.2,.7,.2,1)",
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 9, letterSpacing: "0.18em" }}>
+                  <span style={{ color }}>◆ {a.type.toUpperCase()}</span>
+                  <span style={{ color: "var(--ink-faint)" }}>{a.year}</span>
+                </div>
+                <div style={{ fontSize: 13, color: "var(--ink)", fontWeight: 600, marginBottom: 4 }}>{a.name}</div>
+                <div style={{ fontSize: 10, color: "var(--ink-dim)", lineHeight: 1.5 }}>{a.note}</div>
               </div>
             </div>
           );
         })}
       </div>
-    );
-  }
 
-  /* ── Desktop: SVG graph layout ── */
-  return (
-    <div className="graph-wrap" ref={wrapRef} style={{ height: 980, paddingTop: 96 }}>
-      <svg viewBox={`0 0 ${size.w} ${size.h}`} preserveAspectRatio="none">
-        <defs>
-          <filter id="aglow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="3" result="b" />
-            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-        </defs>
-
-        {/* cluster halos */}
-        {clusters.map((c, i) => {
-          const items = data.achievements.filter((a) => a.cluster === c);
-          if (!items.length) return null;
-          const p = positions[items[0].id];
-          if (!p) return null;
-          const color = CLUSTER_COLORS[c];
-          return (
-            <g key={c}>
-              <circle cx={p.centerX} cy={p.centerY} r={items.length > 1 ? 150 : 90}
-                fill={`${color}10`} stroke={`${color}55`} strokeWidth="1.5" strokeDasharray="2 6" />
-              <circle cx={p.centerX} cy={p.centerY} r={items.length > 1 ? 158 : 98}
-                fill="none" stroke={`${color}22`} strokeWidth="1" />
-              <text x={p.centerX} y={p.centerY - (items.length > 1 ? 168 : 108)}
-                fill={color} fontSize="13" fontFamily="JetBrains Mono"
-                letterSpacing="4" textAnchor="middle"
-                style={{ textTransform: "uppercase", textShadow: `0 0 12px ${color}` }}>
-                ◆ {c}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* edges to cluster center */}
-        {data.achievements.map((a) => {
-          const p = positions[a.id];
-          if (!p || (p.x === p.centerX && p.y === p.centerY)) return null;
-          const color = CLUSTER_COLORS[a.cluster];
-          const active = hover === a.id;
-          return (
-            <line key={a.id} x1={p.centerX} y1={p.centerY} x2={p.x} y2={p.y}
-              stroke={color} strokeOpacity={active ? 0.7 : 0.18}
-              strokeWidth={active ? 1.4 : 0.8}
-              filter={active ? "url(#aglow)" : ""}
-            />
-          );
-        })}
-
-        {/* cross-cluster edges (progression) */}
-        {[
-          ["a5", "a3"], ["a3", "a4"], ["a4", "a2"], ["a2", "a1"],
-          ["a7", "a6"], ["a8", "a6"], ["a7", "a9"], ["a2", "a10"],
-        ].map(([x, y], i) => {
-          const A = positions[x], B = positions[y];
-          if (!A || !B) return null;
-          return (
-            <line key={i} x1={A.x} y1={A.y} x2={B.x} y2={B.y}
-              stroke="#ffffff" strokeOpacity="0.06" strokeWidth="0.8"
-              strokeDasharray="2 4" />
-          );
-        })}
-      </svg>
-
-      {data.achievements.map((a) => {
-        const p = positions[a.id];
-        if (!p) return null;
-        const color = CLUSTER_COLORS[a.cluster];
-        const isHover = hover === a.id;
-        return (
-          <div key={a.id} className="node-card" data-cursor="hover"
-            style={{ left: p.x, top: p.y, zIndex: isHover ? 5 : 2 }}
-            onMouseEnter={() => setHover(a.id)} onMouseLeave={() => setHover(null)}
-            onClick={() => onSelect && onSelect(a)}>
-            <div className="glass mono" style={{
-              padding: "10px 14px",
-              borderRadius: 8,
-              border: `1px solid ${isHover ? color : "rgba(255,255,255,0.12)"}`,
-              background: isHover ? `${color}14` : "rgba(10, 10, 18, 0.85)",
-              boxShadow: isHover ? `0 0 24px ${color}80` : `0 0 8px ${color}20`,
-              minWidth: 150,
-              maxWidth: 220,
-              transform: isHover ? "scale(1.05)" : "scale(1)",
-              transition: "all 220ms cubic-bezier(.2,.7,.2,1)",
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 9, letterSpacing: "0.16em" }}>
-                <span style={{ color: color }}>◆ {a.type.toUpperCase()}</span>
-                <span style={{ color: "var(--ink-faint)" }}>{a.year}</span>
-              </div>
-              <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 600, marginBottom: 2, wordBreak: "break-word" }}>{a.name}</div>
-              <div style={{ fontSize: 10, color: "var(--ink-dim)", wordBreak: "break-word" }}>{a.note}</div>
-            </div>
-          </div>
-        );
-      })}
+      <style>{`
+        @keyframes spin-slow { from { transform-origin: ${CX}px ${CY}px; transform: rotate(0deg); } to { transform-origin: ${CX}px ${CY}px; transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
@@ -205,7 +289,7 @@ function AchievementsGraph({ data, onSelect }) {
 const EMAILJS_SERVICE_ID = "service_hyasekt";
 const EMAILJS_TEMPLATE_ID = "template_t3sfurj";
 const EMAILJS_PUBLIC_KEY = "bP9JSr0ZRnSU-9K2w";
-const RECAPTCHA_SITE_KEY = "6LeKRdUsAAAAAMHSzc8RTJUW4bJN-xmRyaAj6-8e";
+const RECAPTCHA_SITE_KEY = "6Le8UIwtAAAAAM3bRCZuBKFpP2G7pqY8a_KHpvTi";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const MAX_MSG = 1000;
@@ -326,11 +410,17 @@ function ContactNode() {
       subject: sanitize(form.subject),
       message: sanitize(form.message.trim()),
       reply_to: sanitize(form.email.trim()),
+      // EmailJS verifies this token against the template's reCAPTCHA secret.
+      "g-recaptcha-response": captchaToken,
       // to_email is hardcoded inside the EmailJS template — not passed here
     };
 
     try {
-      await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, payload, { publicKey: EMAILJS_PUBLIC_KEY });
+      await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, payload, {
+        publicKey: EMAILJS_PUBLIC_KEY,
+        blockHeadless: true,
+        limitRate: { id: "portfolio-contact", throttle: COOLDOWN * 1000 },
+      });
       lastSentRef.current = Date.now();
       setStage("sent");
     } catch (_) {
@@ -521,6 +611,12 @@ function ContactNode() {
 }
 
 function Footer() {
+  const socialLinks = [
+    { label: "github", href: "https://github.com/AloysiusLimMingZhou" },
+    { label: "linkedin", href: "https://www.linkedin.com/in/aloysius-lim-ming-zhou/" },
+    { label: "instagram", href: "https://www.instagram.com/aloysius.lim.xiii/" },
+  ];
+
   return (
     <footer style={{ padding: "60px 7vw 40px", borderTop: "1px solid var(--hairline)", position: "relative" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 20 }}>
@@ -531,8 +627,8 @@ function Footer() {
           </div>
         </div>
         <div style={{ display: "flex", gap: 24 }}>
-          {["github", "twitter", "linkedin", "scholar"].map((s) => (
-            <a key={s} data-cursor="hover" className="mono" style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--ink-dim)" }}>{s} ↗</a>
+          {socialLinks.map(({ label, href }) => (
+            <a key={label} href={href} target="_blank" rel="noopener noreferrer" data-cursor="hover" className="mono" style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--ink-dim)" }}>{label} ↗</a>
           ))}
         </div>
       </div>

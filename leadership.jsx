@@ -20,6 +20,10 @@ function LeadershipRoles() {
   );
 }
 
+// Transitional module bridge for the existing multi-file component layout.
+globalThis.LeadershipRoles = LeadershipRoles;
+globalThis.LeadershipGraph = LeadershipGraph;
+
 function RoleCard({ role, idx }) {
   const ref = useRefL(null);
   function onMove(e) {
@@ -123,37 +127,40 @@ function LeadershipGraph({ onSelect }) {
   }, [data.events]);
   const years = Object.keys(yearBuckets).sort();
 
-  // hubs: year nodes laid out horizontally
+  // hubs: year nodes — single year centres in canvas, multiple spread horizontally
   const hubs = useMemoL(() => {
     const cy = size.h / 2;
-    const margin = 180;
+    const COLORS = ["#9d00ff", "#ff2bd6", "#00f5ff", "#5eead4", "#ffc857"];
+    if (years.length === 1) {
+      return [{ id: years[0], label: years[0], px: size.w / 2, py: cy, color: COLORS[0] }];
+    }
+    const margin = 200;
     const usable = Math.max(size.w - margin * 2, 1);
-    const step = years.length > 1 ? usable / (years.length - 1) : 0;
+    const step = usable / (years.length - 1);
     return years.map((y, i) => ({
-      id: y,
-      label: y,
+      id: y, label: y,
       px: margin + step * i,
       py: cy,
-      color: ["#9d00ff", "#ff2bd6", "#00f5ff", "#5eead4", "#ffc857"][i % 5],
+      color: COLORS[i % 5],
     }));
   }, [years, size]);
   const hubIdx = Object.fromEntries(hubs.map((h) => [h.id, h]));
 
-  // events orbit their year hub
+  // events orbit their year hub — evenly distributed around a full circle
   const events = useMemoL(() => {
     const out = [];
+    // Safe ceiling: hub sits at size.h/2, nodes must stay ≥ 120px from top
+    // and leave 140px at the bottom for the label block (72px label + padding).
+    const safeRadius = Math.max(160, Math.floor(size.h / 2) - 130);
     years.forEach((y) => {
       const hub = hubIdx[y];
       const items = yearBuckets[y];
-      const radius = 220 + (items.length > 2 ? 30 : 0);
+      const n = items.length;
+      // Base grows gently with event count (30px each), capped to safeRadius.
+      const radius = Math.min(180 + n * 30, safeRadius);
+      const startAngle = -Math.PI / 2; // 12 o'clock so first node appears on top
       items.forEach((ev, i) => {
-        const total = items.length;
-        // semi-circle distribution: alternating top/bottom around hub
-        const sign = i % 2 === 0 ? -1 : 1;
-        const tier = Math.floor(i / 2);
-        const angle = sign * (Math.PI / 2) + sign * (tier * 0.55) - (sign * (total > 1 ? 0.25 : 0));
-        // jitter angle deterministically
-        const a = angle;
+        const a = startAngle + (i / n) * Math.PI * 2;
         out.push({
           ...ev,
           yearKey: y,

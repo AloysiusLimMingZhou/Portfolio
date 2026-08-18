@@ -1,6 +1,6 @@
 # Neural Portfolio
 
-A single-page neural-interface portfolio. Static HTML/CSS with React and Babel loaded from a CDN — **no build step**, no `npm install`. Edit a `.jsx` file, refresh the browser, done.
+A single-page neural-interface portfolio built with React and Vite. React and EmailJS are locked, locally bundled dependencies; Google reCAPTCHA is the only third-party runtime script.
 
 ---
 
@@ -9,44 +9,17 @@ A single-page neural-interface portfolio. Static HTML/CSS with React and Babel l
 From this folder:
 
 ```bash
-# Python (anywhere with Python 3)
-python -m http.server 5500
-
-# or Node
-npx serve .
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
-Then open http://localhost:5500/. Opening `index.html` directly via `file://` will not work — the browser blocks the JSX `<script>` requests under that scheme.
+Then open the local URL printed by Vite. Use `pnpm build` to create the production site in `dist/`.
 
 ---
 
 ## Portrait image
 
-The hero section includes an animated placeholder frame for your profile photo. To display an actual portrait:
-
-1. **Add a `portrait.png`** to the project root (same folder as `index.html`):
-   - Recommended size: **1024 × 1280 px** (4:5 aspect ratio)
-   - Transparent background (PNG) works best with the dark theme
-   - If you don't have a transparent-background photo, a solid dark background (`#0d0d18`) blends well
-
-2. **Update `hero-projects.jsx`** — find the `ProfilePlaceholder` component (around line 101) and replace the inner `<div>` contents (the SVG silhouette + helper text) with an `<img>` tag:
-
-   ```jsx
-   <img
-     src="portrait.png"
-     alt="Portrait"
-     style={{
-       width: "100%",
-       height: "100%",
-       objectFit: "cover",
-       borderRadius: 10,
-     }}
-   />
-   ```
-
-3. **Refresh the browser** — your portrait should appear inside the animated glass frame.
-
-> **Note:** If `portrait.png` doesn't exist in the root, the placeholder silhouette with "▸ DROP PORTRAIT.PNG" instruction text will display instead. This is purely cosmetic — the site functions correctly either way.
+The hero displays `public/portrait.png` inside the animated glass frame. Replace that file with another portrait to update the image; a 4:5 crop is recommended.
 
 ---
 
@@ -54,14 +27,16 @@ The hero section includes an animated placeholder frame for your profile photo. 
 
 | File | What it owns |
 |---|---|
-| `index.html` | Page shell. Loads fonts, React/Babel from CDN, then each `.jsx` module in order. |
+| `index.html` | Page shell. Loads fonts, reCAPTCHA, and the Vite entry module. |
+| `bootstrap.jsx` | Required Vite entrypoint. Bundles React/EmailJS, exposes the small compatibility bridge used by the existing components, and initializes those modules in dependency order. |
+| `package.json` / `pnpm-lock.yaml` | Exact production/build dependencies and reproducible install graph. |
 | `styles.css` | Design tokens (colors, glass, hairlines), nav styles, responsive breakpoints, reveal-on-scroll keyframes. |
 | `app.jsx` | Root `<App>`. Section observer, reveal-on-scroll observer, modal state. |
 | `data.jsx` | **Identity, projects, project field hubs, achievements.** |
 | `leadership-data.jsx` | **Current leadership roles + past events.** |
 | `career.jsx` | **Career timeline data**, **tech-skill graph data**, **testimonials data**, plus the components that render them. |
 | `chrome.jsx` | Animated background canvas, custom cursor, boot screen, top nav (desktop pill + mobile drawer), smooth-scroll anchor handler. |
-| `hero-projects.jsx` | Hero section, profile placeholder, project graph (field hubs + min-distance relaxation). |
+| `hero-projects.jsx` | Hero section, profile portrait, project graph (field hubs + min-distance relaxation). |
 | `achievements-contact.jsx` | Achievements graph, contact form, footer. |
 | `leadership.jsx` | Roles grid + events graph (year hubs). |
 | `detail-modal.jsx` | Shared 3D-tilt glass modal used by projects, achievements, leadership events, and career. |
@@ -171,7 +146,9 @@ Valid `cluster` values are the keys of `CLUSTER_COLORS` in `achievements-contact
   tagline: "One-liner shown in the modal subtitle.",
   overview: "Long-form paragraph for the modal left column.",
   outcomes: ["Outcome 1", "Outcome 2"],  // numbered list in the modal
-  linkedin: "#",                          // optional URL
+  images: ["/assets/events/event-name-1.webp"],
+  instagram: "https://www.instagram.com/p/POST_ID/", // optional recap URL
+  linkedin: "https://www.linkedin.com/posts/POST_ID", // optional recap URL
   x: 0.5, y: 0.5,                         // (legacy seed; positioning is auto by year)
 }
 ```
@@ -238,11 +215,13 @@ When you add `<a target="_blank" href="...">` for an external link (LinkedIn, Gi
 
 ### Contact form
 
-The contact form is **UI only** — submits trigger a `setTimeout` that fades to "sent". No email is actually delivered. If you want real submissions, point it at a free service like [Formspree](https://formspree.io/) or [Web3Forms](https://web3forms.com/), or wire it to a Vercel serverless function. Edit `ContactNode` in `achievements-contact.jsx` (the `send()` function).
+The contact form sends messages through EmailJS and uses Google reCAPTCHA v2 for bot protection. Its service, template, public key, and site-key configuration live near `ContactNode` in `achievements-contact.jsx`.
+
+The EmailJS template has reCAPTCHA V2 verification enabled. The browser sends the token as `g-recaptcha-response`; browser-only cooldowns are supplemental protection. EmailJS's production-domain allowlist is unavailable on the current subscription, so reCAPTCHA remains the provider-enforced anti-abuse boundary. Keep the production hostname registered in the Google reCAPTCHA domain settings.
 
 ### Boot screen
 
-The boot lines in `chrome.jsx` use `dangerouslySetInnerHTML` against a hardcoded array so the inline `<span class='ok'>` markup renders. **Do not** pipe user-supplied or fetched content into that array — it's the one place in the codebase where HTML is injected.
+The boot lines in `chrome.jsx` are structured React nodes. No raw HTML injection API is used.
 
 ---
 
@@ -256,18 +235,18 @@ git commit -m "Update portfolio content"
 git push
 ```
 
-Vercel watches the GitHub repo, runs no build, and serves the static files. Each push to `main` updates production; pushes to other branches create preview deploys at `*-<branch>.vercel.app`.
+Vercel watches the GitHub repo, installs the locked pnpm dependencies, runs the Vite production build, and serves `dist/`. Each push to `main` updates production; pushes to other branches create preview deploys at `*-<branch>.vercel.app`.
 
 To redeploy without changes: Vercel dashboard → project → Deployments → Redeploy.
 
 ---
 
-## Future hardening (optional)
+## Security baseline
 
-The current setup compiles JSX in the browser via Babel-standalone — fine for a portfolio, but it forces the page to ship a 2MB+ Babel bundle and rules out a strict Content-Security-Policy (Babel needs `'unsafe-eval'`). If you ever want to tighten it:
+- Vite compiles JSX at build time; production does not use Babel or an eval-capable runtime compiler.
+- React, ReactDOM, EmailJS, Vite, and pnpm are exact-version locked.
+- `vercel.json` enforces CSP, clickjacking protection, MIME sniffing protection, a referrer policy, and a restrictive permissions policy.
+- Event and certificate media is served from `public/assets/`, without Google Drive file IDs or image metadata.
+- CI performs a locked install, production build, high-severity dependency audit, and security-header check.
 
-1. Migrate to **Vite** or **Next.js**: precompile the JSX, drop the CDN scripts.
-2. Add a strict `Content-Security-Policy` header in `vercel.json`.
-3. Re-enable Subresource Integrity (SRI) on whatever third-party scripts remain — the dev-build SRI hashes were dropped during the prod-build switch and not recomputed.
-
-None of this is required to run or maintain the site. Edit content, push, ship.
+GitHub Actions currently remain version-tagged for maintainability. Full commit-SHA pinning is the stricter supply-chain option if that policy changes later.

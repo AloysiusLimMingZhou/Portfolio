@@ -44,8 +44,8 @@ function Hero({ data }) {
           </div>
         </div>
 
-        {/* Profile image placeholder — right side */}
-        <ProfilePlaceholder />
+        {/* Profile portrait — right side */}
+        <ProfilePortrait />
       </div>
 
       {/* Horizontal telemetry — full width below */}
@@ -97,8 +97,12 @@ function Hero({ data }) {
   );
 }
 
-/* ===== Profile placeholder — animated portrait frame ===== */
-function ProfilePlaceholder() {
+// Transitional module bridge for the existing multi-file component layout.
+globalThis.Hero = Hero;
+globalThis.ProjectGraph = ProjectGraph;
+
+/* ===== Profile portrait — animated frame ===== */
+function ProfilePortrait() {
   const ref = useRefH(null);
   function onMove(e) {
     const r = ref.current.getBoundingClientRect();
@@ -134,6 +138,16 @@ function ProfilePlaceholder() {
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           gap: 12,
         }}>
+          <img
+            src="portrait.png"
+            alt="Portrait of Aloysius Lim"
+            style={{
+              position: "absolute", inset: 0,
+              width: "100%", height: "100%",
+              objectFit: "cover",
+              borderRadius: 10,
+            }}
+          />
           {/* corner ticks */}
           {[
             { top: 10, left: 10 }, { top: 10, right: 10 },
@@ -148,21 +162,6 @@ function ProfilePlaceholder() {
               opacity: 0.6, ...pos,
             }} />
           ))}
-          {/* avatar silhouette */}
-          <svg width="120" height="120" viewBox="0 0 120 120" style={{ opacity: 0.7 }}>
-            <defs>
-              <linearGradient id="avatarG" x1="0" x2="1" y1="0" y2="1">
-                <stop offset="0%" stopColor="#00f5ff" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="#9d00ff" stopOpacity="0.5" />
-              </linearGradient>
-            </defs>
-            <circle cx="60" cy="44" r="22" fill="none" stroke="url(#avatarG)" strokeWidth="1.5" strokeDasharray="3 3" />
-            <path d="M 20 110 Q 60 70 100 110" fill="none" stroke="url(#avatarG)" strokeWidth="1.5" strokeDasharray="3 3" />
-          </svg>
-          <div className="mono" style={{ fontSize: 10, letterSpacing: "0.22em", color: "var(--ink-faint)", textAlign: "center", padding: "0 16px" }}>
-            ▸ DROP PORTRAIT.PNG<br />
-            <span style={{ color: "var(--cyan)", fontSize: 9 }}>1024 × 1280 · TRANSPARENT BG</span>
-          </div>
           {/* scanline */}
           <div style={{
             position: "absolute", left: 0, right: 0, height: 2,
@@ -221,57 +220,84 @@ function ProjectGraph({ data, onSelect }) {
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  const fields = window.PROJECT_FIELDS;
+  const allFields = window.PROJECT_FIELDS;
+
+  // Only show fields that have at least one project
+  const fields = useMemo(() => {
+    const usedFields = new Set();
+    data.projects.forEach((p) => (p.fields || []).forEach((f) => usedFields.add(f)));
+    return allFields.filter((f) => usedFields.has(f.id));
+  }, [data.projects]);
 
   // hub positions: arranged on a ring around the canvas center
+  // Re-distribute angles evenly for the active fields
   const hubs = useMemo(() => {
     const cx = size.w / 2, cy = size.h / 2;
     const rx = Math.min(size.w * 0.32, 360);
     const ry = Math.min(size.h * 0.34, 250);
-    return fields.map((f) => ({
+    return fields.map((f, i) => ({
       ...f,
-      px: cx + Math.cos(f.angle) * rx,
-      py: cy + Math.sin(f.angle) * ry,
+      px: cx + Math.cos(-Math.PI / 2 + (i / fields.length) * Math.PI * 2) * rx,
+      py: cy + Math.sin(-Math.PI / 2 + (i / fields.length) * Math.PI * 2) * ry,
     }));
-  }, [size]);
+  }, [size, fields]);
   const hubIdx = Object.fromEntries(hubs.map((h) => [h.id, h]));
 
-  // project positions: seed by field-average, then relax with min-distance constraint
+  // project positions: orbit-seed per primary hub, then relax with min-distance constraint
   const projects = useMemo(() => {
     const cx = size.w / 2, cy = size.h / 2;
-    // seed
+
+    // Group projects by primary field so we can space them evenly around the hub
+    const fieldPeers = {};  // fid → [project indices]
+    data.projects.forEach((p, i) => {
+      const primary = (p.fields || [])[0];
+      if (!primary) return;
+      (fieldPeers[primary] = fieldPeers[primary] || []).push(i);
+    });
+
+    const ORBIT_R = 200;   // radius around hub where projects are initially placed
+
     const placed = data.projects.map((p, i) => {
       const fs = (p.fields || []).map((fid) => hubIdx[fid]).filter(Boolean);
       if (!fs.length) return { ...p, px: cx, py: cy };
-      let x = 0, y = 0;
-      fs.forEach((f) => { x += f.px; y += f.py; });
-      x /= fs.length; y /= fs.length;
-      // singleton-field projects: push OUTWARD (away from center) to the edges
-      if (fs.length === 1) {
-        const dx = x - cx, dy = y - cy;
-        const len = Math.sqrt(dx * dx + dy * dy) || 1;
-        const push = 110;
-        x += (dx / len) * push;
-        y += (dy / len) * push;
-      } else {
-        // multi-field: pull a touch inward so the overlap reads
-        x = x * 0.82 + cx * 0.18;
-        y = y * 0.82 + cy * 0.18;
+
+      const primary = fs[0];
+      const peers = fieldPeers[(p.fields || [])[0]] || [i];
+      const peerIdx = peers.indexOf(i);
+      const peerCount = peers.length;
+
+      // Angle: space peers evenly over full circle around the hub
+      const hubAngle = Math.atan2(primary.py - cy, primary.px - cx);
+      const angle = hubAngle + (peerIdx / peerCount) * Math.PI * 2 + Math.PI * 0.25;
+
+      let x = primary.px + Math.cos(angle) * ORBIT_R;
+      let y = primary.py + Math.sin(angle) * ORBIT_R;
+
+      // Multi-field: blend toward the midpoint between its two hubs at a shorter orbit
+      if (fs.length > 1) {
+        let mx = 0, my = 0;
+        fs.forEach((f) => { mx += f.px; my += f.py; });
+        mx /= fs.length; my /= fs.length;
+        const mdx = mx - cx, mdy = my - cy;
+        const mlen = Math.sqrt(mdx * mdx + mdy * mdy) || 1;
+        x = cx + (mdx / mlen) * ORBIT_R * 0.7;
+        y = cy + (mdy / mlen) * ORBIT_R * 0.7;
+        // perpendicular offset by peer index so they don't stack
+        const perp = Math.atan2(mdy, mdx) + Math.PI / 2;
+        const offset = (peerIdx - (peerCount - 1) / 2) * 80;
+        x += Math.cos(perp) * offset;
+        y += Math.sin(perp) * offset;
       }
-      // small deterministic jitter so co-located projects break ties
-      const seed = (i * 9301 + 49297) % 233280 / 233280;
-      const seed2 = (i * 7919 + 12553) % 233280 / 233280;
-      x += (seed - 0.5) * 24;
-      y += (seed2 - 0.5) * 24;
+
       return { ...p, px: x, py: y };
     });
 
     // min-distance relaxation: nodes vs nodes, and nodes vs hubs
-    const NODE_R = 92;          // min center-to-center between projects (node + label below)
-    const HUB_R = 132;         // min center-to-center to a hub (hubs are big)
-    const PAD_X = 48, PAD_Y = 40;
+    const NODE_R = 175;         // min center-to-center between projects
+    const HUB_R = 155;         // min center-to-center to a hub
+    const PAD_X = 60, PAD_Y = 56;
 
-    for (let pass = 0; pass < 60; pass++) {
+    for (let pass = 0; pass < 240; pass++) {
       let moved = 0;
       // node↔node
       for (let a = 0; a < placed.length; a++) {
@@ -337,10 +363,9 @@ function ProjectGraph({ data, onSelect }) {
 
   /* ── Mobile: stacked card layout grouped by field ── */
   if (isMobile) {
-    const fieldsList = window.PROJECT_FIELDS;
     return (
       <div ref={wrapRef} style={{ padding: "20px 0" }}>
-        {fieldsList.map((f) => {
+        {fields.map((f) => {
           const items = data.projects.filter((p) => (p.fields || []).includes(f.id));
           if (!items.length) return null;
           const color = f.color;
@@ -373,7 +398,7 @@ function ProjectGraph({ data, onSelect }) {
                           <span style={{ color: "var(--ink-faint)" }}>{p.year}</span>
                         </div>
                         <div style={{ fontSize: 12, color: "var(--ink)", fontWeight: 600, marginBottom: 2, wordBreak: "break-word" }}>{p.name}</div>
-                        <div style={{ fontSize: 10, color: "var(--ink-dim)", wordBreak: "break-word" }}>{p.tagline}</div>
+                        {p.tagline && <div style={{ fontSize: 10, color: "var(--ink-dim)", wordBreak: "break-word" }}>{p.tagline}</div>}
                       </div>
                     </div>
                   );
@@ -388,160 +413,13 @@ function ProjectGraph({ data, onSelect }) {
 
   /* ── Desktop: SVG graph layout ── */
   return (
-    <div className="graph-wrap" ref={wrapRef} style={{ height: 820 }}>
-      <svg viewBox={`0 0 ${size.w} ${size.h}`} preserveAspectRatio="none">
-        <defs>
-          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="2.5" result="b" />
-            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-          </filter>
-        </defs>
-
-        {/* edges: each project to each of its fields */}
-        {projects.map((p) =>
-          (p.fields || []).map((fid, i) => {
-            const h = hubIdx[fid];
-            if (!h) return null;
-            const active = highlight.projs.has(p.id) || highlight.hubs.has(fid);
-            const dim = hover && !active;
-            const dx = h.px - p.px, dy = h.py - p.py;
-            const nx = -dy, ny = dx;
-            const len = Math.sqrt(nx * nx + ny * ny) || 1;
-            const cx = (p.px + h.px) / 2 + (nx / len) * 18;
-            const cy = (p.py + h.py) / 2 + (ny / len) * 18;
-            const path = `M ${p.px} ${p.py} Q ${cx} ${cy} ${h.px} ${h.py}`;
-            return (
-              <path key={p.id + "-" + fid + "-" + i} d={path} fill="none"
-                stroke={active ? h.color : `${h.color}55`}
-                strokeWidth={active ? 1.6 : 0.9}
-                strokeDasharray={active ? "4 4" : "none"}
-                strokeDashoffset={active ? -tick * 30 : 0}
-                opacity={dim ? 0.06 : 1}
-                filter={active ? "url(#glow)" : ""}
-              />
-            );
-          })
-        )}
-      </svg>
-
-      {/* hubs */}
-      {hubs.map((h) => {
-        const isHover = isHubHover(h.id);
-        const inHL = highlight.hubs.has(h.id);
-        const dim = hover && !inHL;
-        const pulse = 1 + Math.sin(tick * 0.9 + h.angle) * 0.03;
-        return (
-          <div key={h.id} className="node-card" data-cursor="hover"
-            style={{ left: h.px, top: h.py, opacity: dim ? 0.35 : 1, zIndex: isHover ? 6 : 3 }}
-            onMouseEnter={() => setHover({ kind: "hub", id: h.id })}
-            onMouseLeave={() => setHover(null)}>
-            <div style={{
-              position: "relative",
-              transform: `scale(${isHover ? 1.08 : pulse})`,
-              transition: "transform 220ms cubic-bezier(.2,.7,.2,1)",
-            }}>
-              <div style={{
-                position: "absolute", inset: -34, borderRadius: "50%",
-                background: `radial-gradient(circle, ${h.color}40, transparent 70%)`,
-                opacity: isHover ? 1 : 0.55, pointerEvents: "none",
-              }} />
-              <svg width="156" height="156" style={{ position: "absolute", left: -18, top: -18, pointerEvents: "none" }}>
-                <circle cx="78" cy="78" r="72" fill="none" stroke={h.color}
-                  strokeOpacity={isHover ? 0.7 : 0.22} strokeWidth="1" strokeDasharray="2 8"
-                  style={{ transformOrigin: "78px 78px", animation: "spin 22s linear infinite" }} />
-                <circle cx="78" cy="78" r="64" fill="none" stroke={h.color}
-                  strokeOpacity={isHover ? 0.45 : 0.14} strokeWidth="1" strokeDasharray="3 4"
-                  style={{ transformOrigin: "78px 78px", animation: "spinRev 28s linear infinite" }} />
-              </svg>
-              <div className="glass mono" style={{
-                width: 120, height: 120, borderRadius: "50%",
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                border: `1.5px solid ${h.color}`,
-                background: `radial-gradient(circle at 30% 30%, ${h.color}26, rgba(10,10,18,0.85) 70%)`,
-                boxShadow: isHover
-                  ? `0 0 60px ${h.color}aa, inset 0 0 32px ${h.color}40`
-                  : `0 0 26px ${h.color}55, inset 0 0 18px ${h.color}25`,
-                color: h.color,
-                position: "relative",
-              }}>
-                <div style={{ fontSize: 9, opacity: 0.65, letterSpacing: "0.22em" }}>FIELD</div>
-                <div className="display" style={{ fontSize: 22, fontWeight: 600, marginTop: 2, color: "var(--ink)", textShadow: `0 0 14px ${h.color}` }}>
-                  {h.label}
-                </div>
-                <div style={{ fontSize: 9, marginTop: 4, letterSpacing: "0.18em", opacity: 0.7 }}>
-                  · {projects.filter((p) => (p.fields || []).includes(h.id)).length} ·
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-
-      {/* project leaves */}
-      {projects.map((p) => {
-        const isHover = isProjHover(p.id);
-        const inHL = highlight.projs.has(p.id);
-        const dim = hover && !inHL;
-        const primary = (p.fields || [])[0];
-        const color = (hubIdx[primary] && hubIdx[primary].color) || "#00f5ff";
-        const overlap = (p.fields || []).length > 1;
-        return (
-          <div key={p.id} className="node-card" data-cursor="hover"
-            style={{ left: p.px, top: p.py, opacity: dim ? 0.25 : 1, transition: "opacity 220ms ease", zIndex: isHover ? 7 : 4 }}
-            onMouseEnter={() => setHover({ kind: "proj", id: p.id })}
-            onMouseLeave={() => setHover(null)}
-            onClick={() => onSelect(p)}>
-            <div style={{ position: "relative", transform: `scale(${isHover ? 1.08 : 1})`, transition: "transform 200ms" }}>
-              <div style={{
-                position: "absolute", inset: -14, borderRadius: "50%",
-                background: `radial-gradient(circle, ${color}33, transparent 70%)`,
-                opacity: isHover ? 1 : 0.6, pointerEvents: "none",
-              }} />
-              <div className="glass mono" style={{
-                width: 46, height: 46, borderRadius: "50%",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                border: `1px solid ${isHover ? color : `${color}77`}`,
-                background: isHover ? `${color}1a` : "rgba(10, 10, 18, 0.85)",
-                boxShadow: isHover
-                  ? `0 0 22px ${color}aa, inset 0 0 12px ${color}40`
-                  : `0 0 10px ${color}30`,
-                color, fontSize: 10, fontWeight: 600,
-                position: "relative",
-              }}>
-                {p.id.slice(1)}
-                {overlap && (
-                  <span style={{
-                    position: "absolute", bottom: -3, right: -3,
-                    width: 10, height: 10, borderRadius: "50%",
-                    background: (hubIdx[(p.fields || [])[1]] && hubIdx[(p.fields || [])[1]].color) || color,
-                    border: "1px solid rgba(10,10,18,0.9)",
-                    boxShadow: `0 0 6px ${color}`,
-                  }} />
-                )}
-              </div>
-              <div style={{
-                position: "absolute", top: 56, left: "50%", transform: "translateX(-50%)",
-                whiteSpace: "nowrap", pointerEvents: "none", textAlign: "center",
-              }}>
-                <div className="mono" style={{
-                  fontSize: 10, color: isHover ? color : "var(--ink)",
-                  textShadow: isHover ? `0 0 10px ${color}` : "none",
-                  fontWeight: 600,
-                }}>{p.name}</div>
-                <div className="mono" style={{ fontSize: 8, color: "var(--ink-faint)", letterSpacing: "0.12em", marginTop: 2 }}>
-                  {p.year} · {p.tag}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-
-      {/* legend */}
+    <div style={{ position: "relative" }}>
+      {/* legend — always above the canvas, never overlapping nodes */}
       <div className="glass mono" style={{
-        position: "absolute", top: 16, right: 16, padding: "10px 14px",
+        display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap",
+        padding: "10px 14px", marginBottom: 12,
         fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase",
-        display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", maxWidth: 460,
+        alignSelf: "flex-end", width: "fit-content", marginLeft: "auto",
       }}>
         {fields.map((f) => (
           <span key={f.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--ink-dim)" }}>
@@ -551,10 +429,160 @@ function ProjectGraph({ data, onSelect }) {
         ))}
       </div>
 
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes spinRev { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
-      `}</style>
+      <div className="graph-wrap" ref={wrapRef} style={{ height: 760 }}>
+        <svg viewBox={`0 0 ${size.w} ${size.h}`} preserveAspectRatio="none">
+          <defs>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2.5" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
+
+          {/* edges: each project to each of its fields */}
+          {projects.map((p) =>
+            (p.fields || []).map((fid, i) => {
+              const h = hubIdx[fid];
+              if (!h) return null;
+              const active = highlight.projs.has(p.id) || highlight.hubs.has(fid);
+              const dim = hover && !active;
+              const dx = h.px - p.px, dy = h.py - p.py;
+              const nx = -dy, ny = dx;
+              const len = Math.sqrt(nx * nx + ny * ny) || 1;
+              const cx = (p.px + h.px) / 2 + (nx / len) * 18;
+              const cy = (p.py + h.py) / 2 + (ny / len) * 18;
+              const path = `M ${p.px} ${p.py} Q ${cx} ${cy} ${h.px} ${h.py}`;
+              return (
+                <path key={p.id + "-" + fid + "-" + i} d={path} fill="none"
+                  stroke={active ? h.color : `${h.color}55`}
+                  strokeWidth={active ? 1.6 : 0.9}
+                  strokeDasharray={active ? "4 4" : "none"}
+                  strokeDashoffset={active ? -tick * 30 : 0}
+                  opacity={dim ? 0.06 : 1}
+                  filter={active ? "url(#glow)" : ""}
+                />
+              );
+            })
+          )}
+        </svg>
+
+        {/* hubs */}
+        {hubs.map((h) => {
+          const isHover = isHubHover(h.id);
+          const inHL = highlight.hubs.has(h.id);
+          const dim = hover && !inHL;
+          const pulse = 1 + Math.sin(tick * 0.9 + h.angle) * 0.03;
+          return (
+            <div key={h.id} className="node-card" data-cursor="hover"
+              style={{ left: h.px, top: h.py, opacity: dim ? 0.35 : 1, zIndex: isHover ? 6 : 3 }}
+              onMouseEnter={() => setHover({ kind: "hub", id: h.id })}
+              onMouseLeave={() => setHover(null)}>
+              <div style={{
+                position: "relative",
+                transform: `scale(${isHover ? 1.08 : pulse})`,
+                transition: "transform 220ms cubic-bezier(.2,.7,.2,1)",
+              }}>
+                <div style={{
+                  position: "absolute", inset: -34, borderRadius: "50%",
+                  background: `radial-gradient(circle, ${h.color}40, transparent 70%)`,
+                  opacity: isHover ? 1 : 0.55, pointerEvents: "none",
+                }} />
+                <svg width="156" height="156" style={{ position: "absolute", left: -18, top: -18, pointerEvents: "none" }}>
+                  <circle cx="78" cy="78" r="72" fill="none" stroke={h.color}
+                    strokeOpacity={isHover ? 0.7 : 0.22} strokeWidth="1" strokeDasharray="2 8"
+                    style={{ transformOrigin: "78px 78px", animation: "spin 22s linear infinite" }} />
+                  <circle cx="78" cy="78" r="64" fill="none" stroke={h.color}
+                    strokeOpacity={isHover ? 0.45 : 0.14} strokeWidth="1" strokeDasharray="3 4"
+                    style={{ transformOrigin: "78px 78px", animation: "spinRev 28s linear infinite" }} />
+                </svg>
+                <div className="glass mono" style={{
+                  width: 120, height: 120, borderRadius: "50%",
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  border: `1.5px solid ${h.color}`,
+                  background: `radial-gradient(circle at 30% 30%, ${h.color}26, rgba(10,10,18,0.85) 70%)`,
+                  boxShadow: isHover
+                    ? `0 0 60px ${h.color}aa, inset 0 0 32px ${h.color}40`
+                    : `0 0 26px ${h.color}55, inset 0 0 18px ${h.color}25`,
+                  color: h.color,
+                  position: "relative",
+                }}>
+                  <div style={{ fontSize: 9, opacity: 0.65, letterSpacing: "0.22em" }}>FIELD</div>
+                  <div className="display" style={{ fontSize: 22, fontWeight: 600, marginTop: 2, color: "var(--ink)", textShadow: `0 0 14px ${h.color}` }}>
+                    {h.label}
+                  </div>
+                  <div style={{ fontSize: 9, marginTop: 4, letterSpacing: "0.18em", opacity: 0.7 }}>
+                    · {projects.filter((p) => (p.fields || []).includes(h.id)).length} ·
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* project leaves */}
+        {projects.map((p) => {
+          const isHover = isProjHover(p.id);
+          const inHL = highlight.projs.has(p.id);
+          const dim = hover && !inHL;
+          const primary = (p.fields || [])[0];
+          const color = (hubIdx[primary] && hubIdx[primary].color) || "#00f5ff";
+          const overlap = (p.fields || []).length > 1;
+          return (
+            <div key={p.id} className="node-card" data-cursor="hover"
+              style={{ left: p.px, top: p.py, opacity: dim ? 0.25 : 1, transition: "opacity 220ms ease", zIndex: isHover ? 7 : 4 }}
+              onMouseEnter={() => setHover({ kind: "proj", id: p.id })}
+              onMouseLeave={() => setHover(null)}
+              onClick={() => onSelect(p)}>
+              <div style={{ position: "relative", transform: `scale(${isHover ? 1.08 : 1})`, transition: "transform 200ms" }}>
+                <div style={{
+                  position: "absolute", inset: -14, borderRadius: "50%",
+                  background: `radial-gradient(circle, ${color}33, transparent 70%)`,
+                  opacity: isHover ? 1 : 0.6, pointerEvents: "none",
+                }} />
+                <div className="glass mono" style={{
+                  width: 46, height: 46, borderRadius: "50%",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  border: `1px solid ${isHover ? color : `${color}77`}`,
+                  background: isHover ? `${color}1a` : "rgba(10, 10, 18, 0.85)",
+                  boxShadow: isHover
+                    ? `0 0 22px ${color}aa, inset 0 0 12px ${color}40`
+                    : `0 0 10px ${color}30`,
+                  color, fontSize: 10, fontWeight: 600,
+                  position: "relative",
+                }}>
+                  {p.id.slice(1)}
+                  {overlap && (
+                    <span style={{
+                      position: "absolute", bottom: -3, right: -3,
+                      width: 10, height: 10, borderRadius: "50%",
+                      background: (hubIdx[(p.fields || [])[1]] && hubIdx[(p.fields || [])[1]].color) || color,
+                      border: "1px solid rgba(10,10,18,0.9)",
+                      boxShadow: `0 0 6px ${color}`,
+                    }} />
+                  )}
+                </div>
+                <div style={{
+                  position: "absolute", top: 56, left: "50%", transform: "translateX(-50%)",
+                  whiteSpace: "nowrap", pointerEvents: "none", textAlign: "center",
+                }}>
+                  <div className="mono" style={{
+                    fontSize: 10, color: isHover ? color : "var(--ink)",
+                    textShadow: isHover ? `0 0 10px ${color}` : "none",
+                    fontWeight: 600,
+                  }}>{p.name}</div>
+                  <div className="mono" style={{ fontSize: 8, color: "var(--ink-faint)", letterSpacing: "0.12em", marginTop: 2 }}>
+                    {p.year} · {p.tag}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        <style>{`
+          @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          @keyframes spinRev { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+        `}</style>
+      </div>
     </div>
   );
 }
@@ -625,18 +653,24 @@ function ProjectModal({ project, onClose }) {
               ))}
             </div>
           </div>
-          {/* links */}
-          <div className="glass" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 10 }}>
-            <div className="mono" style={{ fontSize: 10, letterSpacing: "0.22em", color: "var(--ink-faint)", marginBottom: 6 }}>
-              ▸ ENDPOINTS
+          {/* links — only show if github or website exists */}
+          {(project.github || project.website) && (
+            <div className="glass" style={{ padding: 22, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="mono" style={{ fontSize: 10, letterSpacing: "0.22em", color: "var(--ink-faint)", marginBottom: 6 }}>
+                ▸ ENDPOINTS
+              </div>
+              {project.github && (
+                <a href={project.github} target="_blank" rel="noopener noreferrer" className="mono" data-cursor="hover" style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", border: "1px solid var(--hairline)", borderRadius: 6, fontSize: 12, color: "var(--cyan)" }}>
+                  <span>{project.github.replace("https://", "")}</span><span>↗</span>
+                </a>
+              )}
+              {project.website && (
+                <a href={project.website} target="_blank" rel="noopener noreferrer" className="mono" data-cursor="hover" style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", border: "1px solid var(--hairline)", borderRadius: 6, fontSize: 12, color: "var(--cyan)" }}>
+                  <span>{project.website.replace("https://", "")}</span><span>↗</span>
+                </a>
+              )}
             </div>
-            <a className="mono" data-cursor="hover" style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", border: "1px solid var(--hairline)", borderRadius: 6, fontSize: 12, color: "var(--cyan)" }}>
-              <span>github.com/al/{project.id}</span><span>↗</span>
-            </a>
-            <a className="mono" data-cursor="hover" style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", border: "1px solid var(--hairline)", borderRadius: 6, fontSize: 12, color: "var(--cyan)" }}>
-              <span>{project.id}.aloysiuslim.dev</span><span>↗</span>
-            </a>
-          </div>
+          )}
         </div>
       </div>
     </div>

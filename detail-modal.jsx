@@ -1,5 +1,5 @@
 /* Shared 3D detail modal — used by Projects, Achievements, Leadership */
-const { useRef: useRefD, useEffect: useEffectD } = React;
+const { useRef: useRefD, useEffect: useEffectD, useState: useStateD } = React;
 
 /* Generic detail modal with 3D tilt + parallax glassmorphism */
 function DetailModal({ item, onClose }) {
@@ -171,7 +171,7 @@ function DetailModal({ item, onClose }) {
                 {pane.kind === "links" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {pane.items.map(([label, href]) => (
-                      <a key={label} href={href || "#"} data-cursor="hover" className="mono" style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", border: `1px solid ${color}33`, borderRadius: 6, fontSize: 12, color: color, background: `${color}06` }}>
+                      <a key={label} href={href} target="_blank" rel="noopener noreferrer" data-cursor="hover" className="mono" style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", border: `1px solid ${color}33`, borderRadius: 6, fontSize: 12, color: color, background: `${color}06` }}>
                         <span>{label}</span><span>↗</span>
                       </a>
                     ))}
@@ -183,22 +183,8 @@ function DetailModal({ item, onClose }) {
                     <div className="mono" style={{ fontSize: 9, color: "var(--ink-faint)", letterSpacing: "0.2em", marginTop: 6 }}>{pane.sub}</div>
                   </div>
                 )}
-                {pane.kind === "image" && (
-                  <div style={{
-                    width: "100%", aspectRatio: "16/10",
-                    borderRadius: 10,
-                    border: `1px dashed ${color}55`,
-                    background: `repeating-linear-gradient(135deg, ${color}08 0 8px, transparent 8px 16px), radial-gradient(circle at 50% 50%, ${color}18, transparent 70%)`,
-                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                    color: `${color}aa`,
-                    position: "relative", overflow: "hidden",
-                  }}>
-                    <div style={{ position: "absolute", top: 8, left: 8, width: 14, height: 14, borderLeft: `1px solid ${color}`, borderTop: `1px solid ${color}` }} />
-                    <div style={{ position: "absolute", bottom: 8, right: 8, width: 14, height: 14, borderRight: `1px solid ${color}`, borderBottom: `1px solid ${color}` }} />
-                    <div style={{ fontSize: 32, marginBottom: 8 }}>◇</div>
-                    <div className="mono" style={{ fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase" }}>EVENT IMAGE</div>
-                    <div className="mono" style={{ fontSize: 9, marginTop: 4, color: "var(--ink-faint)", letterSpacing: "0.18em" }}>PLACEHOLDER · 1600×1000</div>
-                  </div>
+                {pane.kind === "gallery" && (
+                  <ImageGallery images={pane.items} alt={pane.alt} color={color} />
                 )}
               </div>
             ))}
@@ -209,6 +195,9 @@ function DetailModal({ item, onClose }) {
   );
 }
 
+// Transitional module bridge for the existing multi-file component layout.
+globalThis.DetailModal = DetailModal;
+
 function paneStyle(color) {
   return {
     padding: 22,
@@ -218,6 +207,59 @@ function paneStyle(color) {
     borderRadius: 12,
     boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px -8px rgba(0,0,0,0.4)`,
   };
+}
+
+function ImageGallery({ images = [], alt, color }) {
+  const [active, setActive] = useStateD(0);
+
+  useEffectD(() => setActive(0), [images]);
+
+  if (!images.length) return null;
+  const selected = images[Math.min(active, images.length - 1)];
+
+  return (
+    <div>
+      <div style={{
+        width: "100%", aspectRatio: "16/10",
+        borderRadius: 10,
+        border: `1px solid ${color}55`,
+        background: `radial-gradient(circle at 50% 50%, ${color}18, transparent 70%)`,
+        position: "relative", overflow: "hidden",
+      }}>
+        <img
+          src={selected}
+          alt={`${alt || "Portfolio image"} ${active + 1}`}
+          style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.94 }}
+        />
+        <div style={{ position: "absolute", inset: 0, boxShadow: `inset 0 0 24px ${color}22`, pointerEvents: "none" }} />
+      </div>
+      {images.length > 1 && (
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${images.length}, 1fr)`, gap: 8, marginTop: 10 }}>
+          {images.map((image, index) => (
+            <button
+              key={image}
+              type="button"
+              onClick={() => setActive(index)}
+              aria-label={`Show event image ${index + 1}`}
+              data-cursor="hover"
+              style={{
+                padding: 0, aspectRatio: "16/10", overflow: "hidden", borderRadius: 6,
+                border: `1px solid ${index === active ? color : `${color}33`}`,
+                opacity: index === active ? 1 : 0.55,
+                boxShadow: index === active ? `0 0 14px ${color}55` : "none",
+                transition: "all 180ms ease",
+              }}
+            >
+              <img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="mono" style={{ marginTop: 8, fontSize: 9, color: "var(--ink-faint)", letterSpacing: "0.14em", textAlign: "right" }}>
+        {String(active + 1).padStart(2, "0")} / {String(images.length).padStart(2, "0")}
+      </div>
+    </div>
+  );
 }
 
 function PaneHeader({ label, color }) {
@@ -231,21 +273,47 @@ function PaneHeader({ label, color }) {
 /* ===== Adapters: turn project / achievement / leadership data into modal item ===== */
 function projectToItem(p) {
   const color = window.DOMAIN_HEX[p.domain];
+  // Build links dynamically — only include what exists
+  const links = [];
+  if (p.github) links.push([p.github.replace("https://", ""), p.github]);
+  if (p.website) links.push([p.website.replace("https://", ""), p.website]);
+
+  const rightPanes = [
+    { heading: "▸ TECH STACK", kind: "chips", items: p.stack },
+  ];
+  if (links.length) {
+    rightPanes.push({ heading: "▸ ENDPOINTS", kind: "links", items: links });
+  }
+
   return {
     color,
     eyebrow: `${p.id.toUpperCase()} / ${p.domain.toUpperCase()} · ${p.year} · ${p.tag.toUpperCase()}`,
     title: p.name,
     tagline: p.tagline,
     left: { heading: "▸ ABSTRACT", body: p.description, features: p.features, featuresLabel: "▸ KEY FEATURES" },
-    right: [
-      { heading: "▸ TECH STACK", kind: "chips", items: p.stack },
-      { heading: "▸ ENDPOINTS", kind: "links", items: [[`github.com/user/${p.id}`, "#"], [`${p.id}.yourdomain.dev`, "#"]] },
-    ],
+    right: rightPanes,
   };
 }
 
 function achievementToItem(a) {
-  const color = window.CLUSTER_COLORS[a.cluster] || "#00f5ff";
+  // use same color as the pie chart slice for this type
+  const color = window.TYPE_COLORS?.[a.type] || window.CLUSTER_COLORS[a.cluster] || "#00f5ff";
+  const rightPanes = [
+    { heading: "▸ METADATA", kind: "kv", items: [
+      ["YEAR", a.year],
+      ["TYPE", a.type.toUpperCase()],
+      ["RESULT", a.note || "—"],
+    ] },
+  ];
+  // only show certificate pane when a link is provided
+  if (a.certificate) {
+    rightPanes.push({ heading: "▸ CERTIFICATE", kind: "links", items: [
+      ["View certificate ↗", a.certificate],
+    ] });
+  }
+  if (a.certificateImage) {
+    rightPanes.push({ heading: "▸ CERTIFICATE", kind: "gallery", items: [a.certificateImage], alt: `${a.name} certificate` });
+  }
   return {
     color,
     eyebrow: `${a.id.toUpperCase()} / ${a.type.toUpperCase()} · ${a.year} · ${a.cluster.toUpperCase()}`,
@@ -253,31 +321,36 @@ function achievementToItem(a) {
     tagline: a.note,
     left: {
       heading: "▸ CONTEXT",
-      body: a.description || `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. ${a.note}.`,
-      features: a.highlights || [
-        `Year ${a.year} · Category ${a.type}`,
-        "Ut enim ad minim veniam quis nostrud exercitation",
-        "Duis aute irure dolor in reprehenderit in voluptate",
-      ],
+      // description and highlights come from data.jsx — edit them there
+      body: a.description || `${a.name} · ${a.note} · ${a.year}.`,
+      features: a.highlights || [`Year ${a.year} · Category ${a.type}`],
       featuresLabel: "▸ HIGHLIGHTS",
     },
-    right: [
-      { heading: "▸ METADATA", kind: "kv", items: [
-        ["YEAR", a.year],
-        ["TYPE", a.type.toUpperCase()],
-        ["CLUSTER", a.cluster.toUpperCase()],
-        ["STATUS", "VERIFIED"],
-      ] },
-      { heading: "▸ EVIDENCE", kind: "links", items: [
-        ["press release ↗", "#"],
-        ["proof of work ↗", "#"],
-      ] },
-    ],
+    right: rightPanes,
   };
 }
 
 function leadershipEventToItem(ev) {
   const color = "#9d00ff";
+  const details = [
+    ["CLUB", ev.club],
+    ["COLLABORATOR", ev.collaborator],
+    ["SPEAKER", ev.speaker],
+    ["PARTICIPANTS", ev.participants],
+    ["DATE", ev.date],
+  ].filter(([, value]) => value);
+  const links = [];
+  if (ev.instagram) links.push(["Instagram recap", ev.instagram]);
+  if (ev.linkedin) links.push(["LinkedIn recap", ev.linkedin]);
+  const rightPanes = [];
+  if (ev.images?.length) {
+    rightPanes.push({ heading: "▸ EVENT GALLERY", kind: "gallery", items: ev.images, alt: ev.name });
+  }
+  rightPanes.push({ heading: "▸ DETAILS", kind: "kv", items: details });
+  if (links.length) {
+    rightPanes.push({ heading: "▸ LINKS", kind: "links", items: links });
+  }
+
   return {
     color,
     eyebrow: `${ev.id.toUpperCase()} / ${ev.role.toUpperCase()} · ${ev.year} · ${ev.club.toUpperCase()}`,
@@ -289,20 +362,7 @@ function leadershipEventToItem(ev) {
       features: ev.outcomes,
       featuresLabel: "▸ OUTCOMES",
     },
-    right: [
-      { heading: "▸ EVENT IMAGE", kind: "image" },
-      { heading: "▸ DETAILS", kind: "kv", items: [
-        ["CLUB", ev.club],
-        ["COLLABORATOR", ev.collaborator],
-        ["SPEAKER", ev.speaker],
-        ["PARTICIPANTS", ev.participants],
-        ["DATE", ev.date],
-      ] },
-      { heading: "▸ LINKS", kind: "links", items: [
-        ["LinkedIn recap ↗", ev.linkedin || "#"],
-        ["event page ↗", "#"],
-      ] },
-    ],
+    right: rightPanes,
   };
 }
 
