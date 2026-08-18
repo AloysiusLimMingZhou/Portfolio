@@ -204,23 +204,42 @@ window.SKILL_EDGES = [
 ];
 
 function TechSkillsGraph() {
+  const DESKTOP_GRAPH_HEIGHT = 720;
   const wrapRef = useRefC(null);
-  const [size, setSize] = useStateC({ w: 1200, h: 720 });
+  const [size, setSize] = useStateC({ w: 1200, h: DESKTOP_GRAPH_HEIGHT });
   const [hover, setHover] = useStateC(null);
   const [tick, setTick] = useStateC(0);
   const [isMobile, setIsMobile] = useStateC(window.innerWidth <= 720);
 
   useEffectC(() => {
-    function measure() {
-      if (!wrapRef.current) return;
-      const r = wrapRef.current.getBoundingClientRect();
-      setSize({ w: r.width, h: r.height });
-      setIsMobile(window.innerWidth <= 720);
-    }
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    function updateLayoutMode() { setIsMobile(window.innerWidth <= 720); }
+    updateLayoutMode();
+    window.addEventListener("resize", updateLayoutMode);
+    return () => window.removeEventListener("resize", updateLayoutMode);
   }, []);
+
+  useEffectC(() => {
+    // Mobile renders a tall skill-card list. Observe only the desktop canvas so
+    // its fixed height is restored whenever the viewport crosses back over.
+    if (isMobile || !wrapRef.current) return undefined;
+    const graph = wrapRef.current;
+    function measureDesktopGraph() {
+      const width = graph.getBoundingClientRect().width;
+      setSize((prev) => (
+        prev.w === width && prev.h === DESKTOP_GRAPH_HEIGHT
+          ? prev
+          : { w: width, h: DESKTOP_GRAPH_HEIGHT }
+      ));
+    }
+    measureDesktopGraph();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measureDesktopGraph) : null;
+    observer?.observe(graph);
+    window.addEventListener("resize", measureDesktopGraph);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measureDesktopGraph);
+    };
+  }, [isMobile]);
 
   useEffectC(() => {
     let raf, t = 0;
@@ -340,7 +359,7 @@ function TechSkillsGraph() {
   if (isMobile) {
     const allNodes = window.SKILL_NODES;
     return (
-      <div ref={wrapRef} style={{ padding: "20px 0" }}>
+      <div style={{ padding: "20px 0" }}>
         {fields.map((f) => {
           const items = allNodes.filter((n) => (n.fields || []).includes(f.id));
           if (!items.length) return null;
@@ -401,7 +420,7 @@ function TechSkillsGraph() {
         ))}
       </div>
 
-      <div className="graph-wrap" ref={wrapRef} style={{ height: 720 }}>
+      <div className="graph-wrap" ref={wrapRef} style={{ height: DESKTOP_GRAPH_HEIGHT }}>
         <svg viewBox={`0 0 ${size.w} ${size.h}`} preserveAspectRatio="none">
           <defs>
             <filter id="sglow" x="-50%" y="-50%" width="200%" height="200%">

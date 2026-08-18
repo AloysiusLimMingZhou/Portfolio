@@ -89,24 +89,43 @@ function RoleCard({ role, idx }) {
 
 /* ===== Leadership events graph — grouped by YEAR hubs ===== */
 function LeadershipGraph({ onSelect }) {
+  const DESKTOP_GRAPH_HEIGHT = 900;
   const data = window.LEADERSHIP_DATA;
   const wrapRef = useRefL(null);
-  const [size, setSize] = useStateL({ w: 1200, h: 900 });
+  const [size, setSize] = useStateL({ w: 1200, h: DESKTOP_GRAPH_HEIGHT });
   const [hover, setHover] = useStateL(null); // { kind: 'year'|'event', id }
   const [tick, setTick] = useStateL(0);
   const [isMobile, setIsMobile] = useStateL(window.innerWidth <= 720);
 
   useEffectL(() => {
-    function measure() {
-      if (!wrapRef.current) return;
-      const r = wrapRef.current.getBoundingClientRect();
-      setSize({ w: r.width, h: r.height });
-      setIsMobile(window.innerWidth <= 720);
-    }
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    function updateLayoutMode() { setIsMobile(window.innerWidth <= 720); }
+    updateLayoutMode();
+    window.addEventListener("resize", updateLayoutMode);
+    return () => window.removeEventListener("resize", updateLayoutMode);
   }, []);
+
+  useEffectL(() => {
+    // Re-measure after returning from the tall mobile card layout so desktop
+    // nodes always use the fixed graph canvas, never the mobile list height.
+    if (isMobile || !wrapRef.current) return undefined;
+    const graph = wrapRef.current;
+    function measureDesktopGraph() {
+      const width = graph.getBoundingClientRect().width;
+      setSize((prev) => (
+        prev.w === width && prev.h === DESKTOP_GRAPH_HEIGHT
+          ? prev
+          : { w: width, h: DESKTOP_GRAPH_HEIGHT }
+      ));
+    }
+    measureDesktopGraph();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measureDesktopGraph) : null;
+    observer?.observe(graph);
+    window.addEventListener("resize", measureDesktopGraph);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measureDesktopGraph);
+    };
+  }, [isMobile]);
 
   useEffectL(() => {
     let raf, t = 0;
@@ -181,7 +200,7 @@ function LeadershipGraph({ onSelect }) {
   if (isMobile) {
     const yearColors = ["#9d00ff", "#ff2bd6", "#00f5ff", "#5eead4", "#ffc857"];
     return (
-      <div ref={wrapRef} style={{ padding: "20px 0" }}>
+      <div style={{ padding: "20px 0" }}>
         {years.map((y, yi) => {
           const items = yearBuckets[y];
           if (!items || !items.length) return null;
@@ -230,7 +249,7 @@ function LeadershipGraph({ onSelect }) {
 
   /* ── Desktop: SVG graph layout ── */
   return (
-    <div className="graph-wrap" ref={wrapRef} style={{ height: 900 }}>
+    <div className="graph-wrap" ref={wrapRef} style={{ height: DESKTOP_GRAPH_HEIGHT }}>
       <svg viewBox={`0 0 ${size.w} ${size.h}`} preserveAspectRatio="none">
         <defs>
           <filter id="lglow" x="-50%" y="-50%" width="200%" height="200%">

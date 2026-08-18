@@ -195,23 +195,42 @@ const DOMAIN_HEX = {
 const DOMAIN_COLORS = DOMAIN_HEX;
 
 function ProjectGraph({ data, onSelect }) {
+  const DESKTOP_GRAPH_HEIGHT = 760;
   const wrapRef = useRefH(null);
-  const [size, setSize] = useStateH({ w: 1200, h: 720 });
+  const [size, setSize] = useStateH({ w: 1200, h: DESKTOP_GRAPH_HEIGHT });
   const [hover, setHover] = useStateH(null); // { kind, id }
   const [tick, setTick] = useStateH(0);
   const [isMobile, setIsMobile] = useStateH(window.innerWidth <= 720);
 
   useEffectH(() => {
-    function measure() {
-      if (!wrapRef.current) return;
-      const r = wrapRef.current.getBoundingClientRect();
-      setSize({ w: r.width, h: r.height });
-      setIsMobile(window.innerWidth <= 720);
-    }
-    measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    function updateLayoutMode() { setIsMobile(window.innerWidth <= 720); }
+    updateLayoutMode();
+    window.addEventListener("resize", updateLayoutMode);
+    return () => window.removeEventListener("resize", updateLayoutMode);
   }, []);
+
+  useEffectH(() => {
+    // The mobile card list is much taller than the desktop graph. Measure only
+    // the mounted desktop canvas so its height cannot leak across breakpoints.
+    if (isMobile || !wrapRef.current) return undefined;
+    const graph = wrapRef.current;
+    function measureDesktopGraph() {
+      const width = graph.getBoundingClientRect().width;
+      setSize((prev) => (
+        prev.w === width && prev.h === DESKTOP_GRAPH_HEIGHT
+          ? prev
+          : { w: width, h: DESKTOP_GRAPH_HEIGHT }
+      ));
+    }
+    measureDesktopGraph();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measureDesktopGraph) : null;
+    observer?.observe(graph);
+    window.addEventListener("resize", measureDesktopGraph);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", measureDesktopGraph);
+    };
+  }, [isMobile]);
 
   useEffectH(() => {
     let raf, t = 0;
@@ -364,7 +383,7 @@ function ProjectGraph({ data, onSelect }) {
   /* ── Mobile: stacked card layout grouped by field ── */
   if (isMobile) {
     return (
-      <div ref={wrapRef} style={{ padding: "20px 0" }}>
+      <div style={{ padding: "20px 0" }}>
         {fields.map((f) => {
           const items = data.projects.filter((p) => (p.fields || []).includes(f.id));
           if (!items.length) return null;
@@ -429,7 +448,7 @@ function ProjectGraph({ data, onSelect }) {
         ))}
       </div>
 
-      <div className="graph-wrap" ref={wrapRef} style={{ height: 760 }}>
+      <div className="graph-wrap" ref={wrapRef} style={{ height: DESKTOP_GRAPH_HEIGHT }}>
         <svg viewBox={`0 0 ${size.w} ${size.h}`} preserveAspectRatio="none">
           <defs>
             <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
