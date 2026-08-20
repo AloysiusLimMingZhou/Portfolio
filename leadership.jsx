@@ -153,12 +153,16 @@ function LeadershipGraph({ onSelect }) {
     if (years.length === 1) {
       return [{ id: years[0], label: years[0], px: size.w / 2, py: cy, color: COLORS[0] }];
     }
-    const margin = 200;
-    const usable = Math.max(size.w - margin * 2, 1);
+    // Give the busier 2025 cluster more room on its left while bringing its
+    // year hub closer to 2026. The right margin stays fixed so 2026 does not
+    // drift when the viewport changes.
+    const leftMargin = Math.min(300, Math.max(240, size.w * 0.34));
+    const rightMargin = 200;
+    const usable = Math.max(size.w - leftMargin - rightMargin, 1);
     const step = usable / (years.length - 1);
     return years.map((y, i) => ({
       id: y, label: y,
-      px: margin + step * i,
+      px: leftMargin + step * i,
       py: cy,
       color: COLORS[i % 5],
     }));
@@ -182,13 +186,22 @@ function LeadershipGraph({ onSelect }) {
       items.forEach((ev, i) => {
         const a = startAngle + (i / n) * Math.PI * 2;
         const rawPx = hub.px + Math.cos(a) * radius;
+        const rawPy = hub.py + Math.sin(a) * radius;
+        const px = Math.min(Math.max(rawPx, nodeEdgePadding), size.w - nodeEdgePadding);
+        // If an orbit reaches a side edge, compensate on the vertical axis so
+        // the event keeps its intended distance from the year hub instead of
+        // collapsing inward (most visible on WorldQuant at the left edge).
+        const dx = px - hub.px;
+        const remainingY = Math.sqrt(Math.max(radius ** 2 - dx ** 2, 0));
+        const verticalDirection = Math.sign(rawPy - hub.py) || 1;
+        const py = px === rawPx ? rawPy : hub.py + verticalDirection * remainingY;
         out.push({
           ...ev,
           yearKey: y,
           // Keep the event circle inside the graph even when an outer orbit
           // would otherwise place it beyond the left or right canvas edge.
-          px: Math.min(Math.max(rawPx, nodeEdgePadding), size.w - nodeEdgePadding),
-          py: hub.py + Math.sin(a) * radius,
+          px,
+          py,
           color: hub.color,
         });
       });
