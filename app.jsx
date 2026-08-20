@@ -1,4 +1,7 @@
 /* Main App */
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
+
 const { useEffect: useEffectM, useState: useStateM, useRef: useRefM } = React;
 
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
@@ -230,6 +233,8 @@ function App() {
       </main>
 
       <DetailModal item={activeItem} onClose={() => setActiveItem(null)} />
+      <Analytics />
+      <SpeedInsights />
     </React.Fragment>
   );
 }
