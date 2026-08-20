@@ -141,6 +141,11 @@ function ProfilePortrait() {
           <img
             src="/portrait.png"
             alt="Portrait of Aloysius Lim"
+            width="896"
+            height="1152"
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
             style={{
               position: "absolute", inset: 0,
               width: "100%", height: "100%",

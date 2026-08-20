@@ -229,6 +229,9 @@ function ImageGallery({ images = [], alt, color }) {
         <img
           src={selected}
           alt={`${alt || "Portfolio image"} ${active + 1}`}
+          loading="lazy"
+          decoding="async"
+          fetchPriority="auto"
           style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.94 }}
         />
         <div style={{ position: "absolute", inset: 0, boxShadow: `inset 0 0 24px ${color}22`, pointerEvents: "none" }} />
@@ -250,7 +253,14 @@ function ImageGallery({ images = [], alt, color }) {
                 transition: "all 180ms ease",
               }}
             >
-              <img src={image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img
+                src={image}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                fetchPriority="low"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
             </button>
           ))}
         </div>
