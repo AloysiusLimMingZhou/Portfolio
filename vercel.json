@@ -1,4 +1,12 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/portrait.png", "destination": "/api/media?path=portrait.png" },
+    { "source": "/assets/favicon-tech-space.png", "destination": "/api/media?path=assets/favicon-tech-space.png" },
+    { "source": "/assets/career/:file", "destination": "/api/media?path=assets/career/:file" },
+    { "source": "/assets/certificates/:file", "destination": "/api/media?path=assets/certificates/:file" },
+    { "source": "/assets/events/:file", "destination": "/api/media?path=assets/events/:file" }
+  ],
   "headers": [
     {
       "source": "/(.*)",

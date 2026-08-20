@@ -20,7 +20,7 @@ window.PORTFOLIO_DATA = {
     stats: [
       { label: "PROJECTS", value: "07" },
       { label: "DEPLOYED MODELS", value: "01" },
-      { label: "COMPETITIONS", value: "08" },
+      { label: "COMPETITIONS", value: "11" },
       { label: "YEARS", value: "02" },
     ],
   },
@@ -232,7 +232,7 @@ window.PORTFOLIO_DATA = {
       certificateImage: "/assets/certificates/a5-kitahack-2026.png",
     },
     {
-      id: "a6", name: "MAHSA University Engineering, Science and Technology Exhibition 2026", year: "2026", type: "Project Showcasing", note: "Bronze (Information Technology Category)", cluster: "competitions",
+      id: "a6", name: "MAHSA University Engineering, Science and Technology Exhibition 2026", year: "2026", type: "Project Showcase", note: "Bronze (Information Technology Category)", cluster: "competitions",
       // ── Edit below ──
       description: "Showcased HarvestVision at the MAHSA University ESTE 2026 exhibition, earning Bronze in the Information Technology category among competing university teams.",
       highlights: [
@@ -273,6 +273,16 @@ window.PORTFOLIO_DATA = {
         "Participated in the final event on 25 July 2026 in Kuala Lumpur",
       ],
       certificateImage: "/assets/certificates/a9-qwen-brainrot-hackathon-2026.png",
+    },
+    {
+      id: "a10", name: "Tech FYP Competition Showcase & Awards 2026", year: "2026", type: "Project Showcase", note: "Participation", cluster: "competitions",
+      description: "A competition recognizing the most innovative and mature final-year projects that provide practical solutions to problems faced by the community.",
+      highlights: [
+        "Built HealthConnect, an all-in-one Medical RAG, heart disease prediction MLOps, and full-stack application",
+        "Implemented OAuth, JWT authentication, and an admin dashboard with role-based access control (RBAC) using PostgreSQL, Prisma, NestJS, Next.js, and Tailwind CSS",
+        "Achieved 90% accuracy, 89.7% F1 score, 86.7% precision, 92.9% recall, and 96% ROC-AUC for heart disease prediction",
+      ],
+      certificateImage: "/assets/certificates/a10-tech-fyp-showcase-2026.png",
     },
   ],
 };

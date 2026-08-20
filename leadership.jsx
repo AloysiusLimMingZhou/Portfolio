@@ -265,7 +265,10 @@ function LeadershipGraph({ onSelect }) {
     <div className="graph-wrap" ref={wrapRef} style={{ height: DESKTOP_GRAPH_HEIGHT }}>
       <svg viewBox={`0 0 ${size.w} ${size.h}`} preserveAspectRatio="none">
         <defs>
-          <filter id="lglow" x="-50%" y="-50%" width="200%" height="200%">
+          {/* User-space bounds keep the glow visible for perfectly vertical
+              edges, whose object bounding box otherwise has zero width. */}
+          <filter id="lglow" filterUnits="userSpaceOnUse"
+            x={-20} y={-20} width={size.w + 40} height={size.h + 40}>
             <feGaussianBlur stdDeviation="3" result="b" />
             <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>

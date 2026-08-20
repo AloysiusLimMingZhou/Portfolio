@@ -171,7 +171,7 @@ function DetailModal({ item, onClose }) {
                 {pane.kind === "links" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {pane.items.map(([label, href]) => (
-                      <a key={label} href={href} target="_blank" rel="noopener noreferrer" data-cursor="hover" className="mono" style={{ display: "flex", justifyContent: "space-between", padding: "10px 12px", border: `1px solid ${color}33`, borderRadius: 6, fontSize: 12, color: color, background: `${color}06` }}>
+                      <a key={label} href={href} target="_blank" rel="noopener noreferrer" data-cursor="hover" className="mono" style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "10px 12px", border: `1px solid ${color}33`, borderRadius: 6, fontSize: 12, lineHeight: 1.45, color: color, background: `${color}06`, overflowWrap: "anywhere" }}>
                         <span>{label}</span><span>↗</span>
                       </a>
                     ))}
@@ -234,7 +234,7 @@ function ImageGallery({ images = [], alt, color }) {
         <div style={{ position: "absolute", inset: 0, boxShadow: `inset 0 0 24px ${color}22`, pointerEvents: "none" }} />
       </div>
       {images.length > 1 && (
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${images.length}, 1fr)`, gap: 8, marginTop: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(images.length, 5)}, minmax(0, 1fr))`, gap: 8, marginTop: 10 }}>
           {images.map((image, index) => (
             <button
               key={image}

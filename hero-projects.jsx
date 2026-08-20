@@ -139,7 +139,7 @@ function ProfilePortrait() {
           gap: 12,
         }}>
           <img
-            src="portrait.png"
+            src="/portrait.png"
             alt="Portrait of Aloysius Lim"
             style={{
               position: "absolute", inset: 0,

@@ -13,10 +13,28 @@ window.CAREER_DATA = [
     summary: "Collaborated with a seven-member team to research, develop, and deploy a hexapod designed to support palm oil harvesting operations. Researched and evaluated cutting-edge deep reinforcement learning approaches to enable autonomous hexapod locomotion across realistically simulated uneven terrain.",
     achievements: [
       "Achieved stable omnidirectional hexapod locomotion on uneven terrain in virtual simulation with a 90%+ alignment rate",
-      "Attended the MonashRISE ECAN Research Colloquium",
+      "Showcased the research project and methodology at the MonashRISE ECAN Research Colloquium alongside students and researchers from renowned universities, including Tsinghua University, Peking University, Shanghai Jiao Tong University, and City University of Hong Kong",
       "Submitted a research paper to the ICETA IET 2026 international conference; acceptance is currently pending",
     ],
     skills: ["Research Methodology & Writing", "Reinforcement Learning", "Robotics Algorithms", "NVIDIA Isaac Sim", "Communication Skills"],
+    images: [
+      "/assets/career/c1-research-intern-01.webp",
+      "/assets/career/c1-research-intern-02.webp",
+      "/assets/career/c1-research-intern-03.webp",
+      "/assets/career/c1-research-intern-04.webp",
+      "/assets/career/c1-research-intern-05.webp",
+      "/assets/career/c1-research-intern-06.webp",
+      "/assets/career/c1-research-intern-07.webp",
+      "/assets/career/c1-research-intern-08.webp",
+      "/assets/career/c1-research-intern-09.webp",
+      "/assets/career/c1-research-intern-10.webp",
+    ],
+    papers: [
+      {
+        title: "Hybrid PPO-IK Control with Curriculum Learning for Blind Uneven-Terrain Hexapod Locomotion",
+        url: "/assets/research/hybrid-ppo-ik-control-curriculum-learning-hexapod-locomotion.pdf",
+      },
+    ],
     color: "#00f5ff",
   },
 ];
@@ -119,26 +137,35 @@ function CareerNode({ job, side, onSelect }) {
 }
 
 function careerJobToItem(job) {
+  const rightPanes = [];
+  if (job.images?.length) {
+    rightPanes.push({ heading: "▸ RESEARCH GALLERY", kind: "gallery", items: job.images, alt: `${job.position} at ${job.company}` });
+  }
+  if (job.papers?.length) {
+    rightPanes.push({ heading: "▸ RESEARCH PAPER", kind: "links", items: job.papers.map((paper) => [paper.title, paper.url]) });
+  }
+  rightPanes.push(
+    { heading: "▸ SKILLS GAINED", kind: "chips", items: job.skills },
+    { heading: "▸ TIMELINE", kind: "kv", items: [
+      ["COMPANY", job.company],
+      ["POSITION", job.position],
+      ["TERM", job.term],
+      ["LOCATION", job.location],
+    ] },
+  );
+
   return {
     color: job.color,
     eyebrow: `${job.id.toUpperCase()} / CAREER · ${job.term} · ${job.location.toUpperCase()}`,
     title: job.position,
-    tagline: `${job.company} — ${job.summary}`,
+    tagline: job.company,
     left: {
       heading: "▸ ROLE OVERVIEW",
       body: job.summary,
       features: job.achievements,
       featuresLabel: "▸ KEY ACHIEVEMENTS",
     },
-    right: [
-      { heading: "▸ SKILLS GAINED", kind: "chips", items: job.skills },
-      { heading: "▸ TIMELINE", kind: "kv", items: [
-        ["COMPANY", job.company],
-        ["POSITION", job.position],
-        ["TERM", job.term],
-        ["LOCATION", job.location],
-      ] },
-    ],
+    right: rightPanes,
   };
 }
 

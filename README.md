@@ -17,9 +17,9 @@ Then open the local URL printed by Vite. Use `pnpm build` to create the producti
 
 ---
 
-## Portrait image
+## Portfolio media
 
-The hero displays `public/portrait.png` inside the animated glass frame. Replace that file with another portrait to update the image; a 4:5 crop is recommended.
+Development uses the ignored files under `public/`. Production rewrites the same stable media paths to the allowlisted `/api/media` function, which streams images from private Vercel Blob storage without exposing its token or storage URLs. Upload replacement files to the matching `portfolio/` pathname in Blob before deploying code that references them.
 
 ---
 
@@ -28,6 +28,7 @@ The hero displays `public/portrait.png` inside the animated glass frame. Replace
 | File | What it owns |
 |---|---|
 | `index.html` | Page shell. Loads fonts, reCAPTCHA, and the Vite entry module. |
+| `api/media.js` | Allowlisted Vercel Function that streams private Blob images through same-origin portfolio URLs. |
 | `bootstrap.jsx` | Required Vite entrypoint. Bundles React/EmailJS, exposes the small compatibility bridge used by the existing components, and initializes those modules in dependency order. |
 | `package.json` / `pnpm-lock.yaml` | Exact production/build dependencies and reproducible install graph. |
 | `styles.css` | Design tokens (colors, glass, hairlines), nav styles, responsive breakpoints, reveal-on-scroll keyframes. |
@@ -146,7 +147,7 @@ Valid `cluster` values are the keys of `CLUSTER_COLORS` in `achievements-contact
   tagline: "One-liner shown in the modal subtitle.",
   overview: "Long-form paragraph for the modal left column.",
   outcomes: ["Outcome 1", "Outcome 2"],  // numbered list in the modal
-  images: ["/assets/events/event-name-1.webp"],
+  images: ["/assets/events/event-name-1.webp"], // local in development; privately proxied in production
   instagram: "https://www.instagram.com/p/POST_ID/", // optional recap URL
   linkedin: "https://www.linkedin.com/posts/POST_ID", // optional recap URL
   x: 0.5, y: 0.5,                         // (legacy seed; positioning is auto by year)
@@ -246,7 +247,7 @@ To redeploy without changes: Vercel dashboard → project → Deployments → Re
 - Vite compiles JSX at build time; production does not use Babel or an eval-capable runtime compiler.
 - React, ReactDOM, EmailJS, Vite, and pnpm are exact-version locked.
 - `vercel.json` enforces CSP, clickjacking protection, MIME sniffing protection, a referrer policy, and a restrictive permissions policy.
-- Event and certificate media is served from `public/assets/`, without Google Drive file IDs or image metadata.
+- Portfolio images are stored in private Vercel Blob storage and served through an allowlisted, same-origin media function; Git ignores the local `public/` copies.
 - CI performs a locked install, production build, high-severity dependency audit, and security-header check.
 
 GitHub Actions currently remain version-tagged for maintainability. Full commit-SHA pinning is the stricter supply-chain option if that policy changes later.

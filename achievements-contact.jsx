@@ -10,7 +10,7 @@ const TYPE_COLORS = {
   "Capture The Flag":  "#00f5ff",   // cyan
   "Hackathon":         "#ff2bd6",   // pink
   "AI Competition":    "#9d00ff",   // purple
-  "Project Showcasing":"#ffc857",   // amber
+  "Project Showcase": "#ffc857",   // amber
   // add more types here as needed
   default:             "#5eead4",   // teal fallback
 };
