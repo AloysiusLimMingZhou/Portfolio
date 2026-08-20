@@ -176,25 +176,24 @@ function LeadershipGraph({ onSelect }) {
     // Safe ceiling: hub sits at size.h/2, nodes must stay ≥ 120px from top
     // and leave 140px at the bottom for the label block (72px label + padding).
     const safeRadius = Math.max(160, Math.floor(size.h / 2) - 130);
-    years.forEach((y) => {
+    years.forEach((y, yearIndex) => {
       const hub = hubIdx[y];
       const items = yearBuckets[y];
       const n = items.length;
       // Base grows gently with event count (30px each), capped to safeRadius.
       const radius = Math.min(180 + n * 30, safeRadius);
-      const startAngle = -Math.PI / 2; // 12 o'clock so first node appears on top
+      // Stagger alternating year clusters by a quarter slot. This prevents the
+      // inward-facing nodes and their labels from landing on the same bands.
+      const phaseOffset = yearIndex % 2 === 0 ? 0 : Math.PI / (2 * n);
+      const startAngle = -Math.PI / 2 + phaseOffset;
       items.forEach((ev, i) => {
         const a = startAngle + (i / n) * Math.PI * 2;
         const rawPx = hub.px + Math.cos(a) * radius;
         const rawPy = hub.py + Math.sin(a) * radius;
         const px = Math.min(Math.max(rawPx, nodeEdgePadding), size.w - nodeEdgePadding);
-        // If an orbit reaches a side edge, compensate on the vertical axis so
-        // the event keeps its intended distance from the year hub instead of
-        // collapsing inward (most visible on WorldQuant at the left edge).
-        const dx = px - hub.px;
-        const remainingY = Math.sqrt(Math.max(radius ** 2 - dx ** 2, 0));
-        const verticalDirection = Math.sign(rawPy - hub.py) || 1;
-        const py = px === rawPx ? rawPy : hub.py + verticalDirection * remainingY;
+        // Clamp each axis independently. Recalculating y after an x clamp can
+        // pull multiple edge nodes onto the same row and overlap their labels.
+        const py = Math.min(Math.max(rawPy, nodeEdgePadding), size.h - 140);
         out.push({
           ...ev,
           yearKey: y,
@@ -356,6 +355,8 @@ function LeadershipGraph({ onSelect }) {
           : nearRightEdge
             ? { right: -8, width: edgeLabelWidth, textAlign: "right", whiteSpace: "normal" }
             : { left: "50%", transform: "translateX(-50%)", textAlign: "center", whiteSpace: "nowrap" };
+        const labelAbove = Math.abs(n.py - hubIdx[n.yearKey].py) < 80;
+        const labelVerticalPosition = labelAbove ? { bottom: 90 } : { top: 72 };
         return (
           <div key={n.id} className="node-card" data-cursor="hover"
             style={{ left: n.px, top: n.py, opacity: dim ? 0.25 : 1, transition: "opacity 220ms ease", zIndex: isHover ? 7 : 4 }}
@@ -374,7 +375,7 @@ function LeadershipGraph({ onSelect }) {
               }}>
                 {n.id.slice(1)}
               </div>
-              <div style={{ position: "absolute", top: 72, pointerEvents: "none", ...labelPosition }}>
+              <div style={{ position: "absolute", pointerEvents: "none", ...labelVerticalPosition, ...labelPosition }}>
                 <div className="mono" style={{ fontSize: 11, color: isHover ? color : "var(--ink)", textShadow: isHover ? `0 0 10px ${color}` : "none", fontWeight: 600 }}>
                   {n.name}
                 </div>
