@@ -586,7 +586,7 @@ function TechSkillsGraph() {
 
 /* ===== Testimonials — infinite scrolling cards ===== */
 window.TESTIMONIALS = [
-  { name: "Lorem Ipsum",      role: "Principal Dolor · Sit Amet",         date: "Mar 2025", text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam." },
+  { name: "Mustafa A.",      role: "CEO & Co-founder TableTap technologies LTD.",         date: "Aug 2026", text: "Working with Aloysius at Sunway Tech Club has been a constant reminder that some people are just annoyingly good at everything. He’s brilliant, insanely talented, quick-witted, and somehow always has a smart answer ready. Genuinely one of the few people I’ve met who can be both ridiculously capable and hilarious at the same time. Absolute goat." },
   { name: "Dolor Sit",        role: "Director of Amet · Consectetur",    date: "Aug 2024", text: "Quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit." },
   { name: "Amet Consectetur", role: "Co-founder · Adipiscing Co.",       date: "Oct 2025", text: "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum." },
   { name: "Adipiscing Elit",  role: "Engineering Manager · Sed",         date: "Dec 2023", text: "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium totam rem aperiam." },
