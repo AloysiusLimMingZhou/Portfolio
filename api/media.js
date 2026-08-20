@@ -1,4 +1,6 @@
 import { get } from "@vercel/blob";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 const MEDIA_PATH_PATTERN = /^(?:portrait\.png|assets\/favicon-tech-space\.png|assets\/(?:career|certificates|events)\/[a-z0-9][a-z0-9-]*\.(?:png|webp))$/;
 const BLOB_PREFIX = "portfolio/";
@@ -16,39 +18,59 @@ function responseHeaders(blob, pathname) {
   };
 }
 
-export default async function handler(request) {
+function sendText(response, status, message, extraHeaders = {}) {
+  response.writeHead(status, {
+    "Cache-Control": "no-store",
+    "Content-Type": "text/plain; charset=utf-8",
+    "X-Content-Type-Options": "nosniff",
+    ...extraHeaders,
+  });
+  response.end(message);
+}
+
+export default async function handler(request, response) {
   if (request.method !== "GET" && request.method !== "HEAD") {
-    return new Response("Method not allowed", {
-      status: 405,
-      headers: { Allow: "GET, HEAD" },
-    });
+    sendText(response, 405, "Method not allowed", { Allow: "GET, HEAD" });
+    return;
   }
 
-  const pathname = new URL(request.url).searchParams.get("path") || "";
+  const pathname = new URL(request.url, "http://localhost").searchParams.get("path") || "";
   if (!MEDIA_PATH_PATTERN.test(pathname)) {
-    return new Response("Not found", { status: 404 });
+    sendText(response, 404, "Not found");
+    return;
   }
 
   try {
     const result = await get(`${BLOB_PREFIX}${pathname}`, {
       access: "private",
-      ifNoneMatch: request.headers.get("if-none-match") || undefined,
+      ifNoneMatch: request.headers["if-none-match"] || undefined,
     });
 
     if (!result) {
-      return new Response("Not found", { status: 404 });
+      sendText(response, 404, "Not found");
+      return;
     }
 
     const headers = responseHeaders(result.blob, pathname);
     if (result.statusCode === 304) {
-      return new Response(null, { status: 304, headers });
+      response.writeHead(304, headers);
+      response.end();
+      return;
     }
 
-    return new Response(request.method === "HEAD" ? null : result.stream, {
-      status: 200,
-      headers,
-    });
+    response.writeHead(200, headers);
+    if (request.method === "HEAD") {
+      response.end();
+      return;
+    }
+
+    await pipeline(Readable.fromWeb(result.stream), response);
   } catch {
-    return new Response("Media unavailable", { status: 503 });
+    if (response.headersSent) {
+      response.destroy();
+      return;
+    }
+
+    sendText(response, 503, "Media unavailable");
   }
 }
